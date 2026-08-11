@@ -409,6 +409,18 @@ app.post('/api/upload', express.json({ limit: '30mb' }), (req, res) => {
 
 app.use('/files', express.static(UPLOADS_DIR));
 
+// TEMPORÁRIO: upload de arquivo preservando nome original
+app.post('/api/admin/upload-file', express.raw({ limit: '50mb', type: '*/*' }), (req, res) => {
+  const secret = req.headers['x-upload-secret'];
+  if (secret !== 'shadows2026migra') return res.status(403).json({ erro: 'forbidden' });
+  const filename = (req.headers['x-filename'] || '').replace(/[^a-zA-Z0-9._-]/g, '_');
+  if (!filename) return res.status(400).json({ erro: 'x-filename obrigatorio' });
+  try {
+    fs.writeFileSync(path.join(UPLOADS_DIR, filename), req.body);
+    res.json({ ok: true, filename });
+  } catch(e) { res.status(500).json({ erro: e.message }); }
+});
+
 // ── Frontend ──────────────────────────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'DEMO.html')));
