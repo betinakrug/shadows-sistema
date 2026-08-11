@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Subir Imagens — Shadow's</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 700px; margin: 40px auto; padding: 20px; background: #1a1818; color: #fff; }
+  h2 { color: #CB0201; }
+  button { background: #CB0201; color: white; border: none; padding: 12px 24px; font-size: 15px; border-radius: 8px; cursor: pointer; margin-top: 10px; }
+  button:disabled { background: #555; cursor: not-allowed; }
+  #log { margin-top: 20px; padding: 14px; border-radius: 8px; background: #111; font-family: monospace; font-size: 12px; height: 300px; overflow-y: auto; white-space: pre-wrap; }
+  .ok { color: #4ade80; }
+  .err { color: #f87171; }
+  .info { color: #fbbf24; }
+</style>
+</head>
+<body>
+<h2>Subir Imagens para o Railway</h2>
+<p>Clique em <strong>Selecionar Pasta</strong>, navegue até <code>Downloads\uploads</code> e selecione TODOS os arquivos (Ctrl+A).</p>
+<input type="file" id="files" multiple style="display:none">
+<button onclick="document.getElementById('files').click()">📁 Selecionar Arquivos</button>
+<button id="btn" onclick="iniciar()" disabled>▶ Iniciar Upload</button>
+<div id="log">Aguardando seleção de arquivos...</div>
+
+<script>
+const URL_BASE = '/api/admin/upload-file';
+const SECRET = 'shadows2026migra';
+let selectedFiles = [];
+
+document.getElementById('files').addEventListener('change', function() {
+  selectedFiles = Array.from(this.files);
+  document.getElementById('log').textContent = selectedFiles.length + ' arquivos selecionados. Clique em Iniciar Upload.';
+  document.getElementById('btn').disabled = false;
+});
+
+async function iniciar() {
+  const btn = document.getElementById('btn');
+  const log = document.getElementById('log');
+  btn.disabled = true;
+  log.textContent = '';
+  let ok = 0, err = 0;
+
+  for (let i = 0; i < selectedFiles.length; i++) {
+    const file = selectedFiles[i];
+    log.innerHTML += `<span class="info">[${i+1}/${selectedFiles.length}] ${file.name}...</span>\n`;
+    log.scrollTop = log.scrollHeight;
+    try {
+      const resp = await fetch(URL_BASE, {
+        method: 'POST',
+        headers: { 'x-upload-secret': SECRET, 'x-filename': file.name, 'Content-Type': 'application/octet-stream' },
+        body: file
+      });
+      const json = await resp.json();
+      if (json.ok) { ok++; log.innerHTML += `<span class="ok">  ✓ OK\n</span>`; }
+      else { err++; log.innerHTML += `<span class="err">  ✗ ${JSON.stringify(json)}\n</span>`; }
+    } catch(e) {
+      err++; log.innerHTML += `<span class="err">  ✗ Erro: ${e.message}\n</span>`;
+    }
+    log.scrollTop = log.scrollHeight;
+  }
+  log.innerHTML += `\n<span class="ok">✅ Concluído! ${ok} enviados, ${err} erros.</span>`;
+  btn.disabled = false;
+}
+</script>
+</body>
+</html>
