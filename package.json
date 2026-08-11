@@ -2,16 +2,7 @@
   "name": "shadows-sistema",
   "version": "1.0.0",
   "private": true,
-  "description": "Sistema interno Shadow's",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "better-sqlite3": "^9.4.3",
-    "express": "^4.18.3"
-  },
-  "engines": {
-    "node": ">=18"
-  }
+  "scripts": { "start": "node server.js" },
+  "dependencies": { "better-sqlite3": "^9.4.3", "express": "^4.18.3" },
+  "engines": { "node": "20.x" }
 }
