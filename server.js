@@ -168,7 +168,7 @@ function stripBinarios(obj) {
 function montarEstado() {
   const cadastros         = db.prepare('SELECT dados FROM cadastros      ORDER BY id').all().map(r => stripBinarios(JSON.parse(r.dados)));
   const fretes            = db.prepare('SELECT dados FROM fretes         ORDER BY id').all().map(r => stripBinarios(JSON.parse(r.dados)));
-  const aplicacoesLogo    = db.prepare('SELECT dados FROM aplicacoes_logo ORDER BY id DESC LIMIT 100').all().map(r => stripBinarios(JSON.parse(r.dados)));
+  const aplicacoesLogo    = db.prepare('SELECT dados FROM aplicacoes_logo ORDER BY id DESC').all().map(r => stripBinarios(JSON.parse(r.dados)));
   const modelagens        = db.prepare('SELECT dados FROM modelagens ORDER BY id DESC').all().map(r => stripBinarios(JSON.parse(r.dados)));
   const atualizacoesPreco = db.prepare('SELECT dados FROM atualizacoes_preco ORDER BY id DESC').all().map(r => JSON.parse(r.dados));
   const cfg = {};
