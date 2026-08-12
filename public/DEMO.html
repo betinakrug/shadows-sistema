@@ -3806,9 +3806,7 @@ Instagram: mariasilva"></textarea>
         cep:         lastFrete.cep || lastCad.cep || '',
         endereco_cep:lastFrete.endereco_cep || '',
         rua_cep:     lastFrete.rua_cep || '',
-        bairro_cep:  lastFrete.bairro_cep || '',
-        canLogo:     permitido('solicitar-logo'),
-        canFrete:    permitido('solicitar')
+        bairro_cep:  lastFrete.bairro_cep || ''
       });
 
       html += '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">';
@@ -3824,8 +3822,9 @@ Instagram: mariasilva"></textarea>
       html += '</div></div>';
       // Quick-action buttons
       html += '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">';
-      if (permitidos.includes('solicitar-logo')) html += '<button onclick="_histSolicitarLogo(' + pIdx + ')" style="display:inline-flex;align-items:center;gap:5px;background:#CB0201;color:#fff;border:none;border-radius:7px;padding:6px 13px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit"><i class=\"ti ti-photo\" style=\"font-size:13px\"></i>Solicitar Logo</button>';
-      if (permitidos.includes('solicitar'))       html += '<button onclick="_histSolicitarFrete(' + pIdx + ')" style="display:inline-flex;align-items:center;gap:5px;background:#0891b2;color:#fff;border:none;border-radius:7px;padding:6px 13px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit"><i class=\"ti ti-truck\" style=\"font-size:13px\"></i>Solicitar Frete</button>';
+      var _rp = (NAV_POR_ROLE[currentUser && currentUser.role] || []);
+      if (_rp.includes('solicitar-logo')) html += '<button onclick="_histSolicitarLogo(' + pIdx + ')" style="display:inline-flex;align-items:center;gap:5px;background:#CB0201;color:#fff;border:none;border-radius:7px;padding:6px 13px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit"><i class=\"ti ti-photo\" style=\"font-size:13px\"></i>Solicitar Logo</button>';
+      if (_rp.includes('solicitar'))       html += '<button onclick="_histSolicitarFrete(' + pIdx + ')" style="display:inline-flex;align-items:center;gap:5px;background:#0891b2;color:#fff;border:none;border-radius:7px;padding:6px 13px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit"><i class=\"ti ti-truck\" style=\"font-size:13px\"></i>Solicitar Frete</button>';
       html += '</div>';
 
       if (g.cads.length) {
