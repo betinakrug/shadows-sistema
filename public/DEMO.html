@@ -851,6 +851,10 @@
     <i class="ti ti-inbox nav-icon" aria-hidden="true"></i>
     <span>Minhas Solicitações</span>
   </div>
+  <div class="nav-item nav-sub" id="nav-hist-cliente" onclick="ir('hist-cliente')">
+    <i class="ti ti-user-search nav-icon" aria-hidden="true"></i>
+    <span>Histórico Cliente</span>
+  </div>
   <div class="nav-item" id="nav-painel" onclick="ir('painel')">
     <i class="ti ti-clipboard-list nav-icon" aria-hidden="true"></i>
     <span>Demandas a Fazer</span>
@@ -2100,6 +2104,10 @@ Instagram: mariasilva"></textarea>
             <button class="btn btn-primary" id="btn-salvar-preco" onclick="salvarPreco()">Salvar</button>
           </div>
         </div>
+        <div style="position:relative;margin-bottom:12px">
+          <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:0.85rem;pointer-events:none"></i>
+          <input id="precos-busca" type="text" placeholder="Buscar referência ou cód. Sobber..." oninput="renderTabelaPrecos()" style="width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:8px;padding:8px 12px 8px 34px;font-size:0.85rem;font-family:inherit;background:var(--bg2);color:var(--text);outline:none" />
+        </div>
         <div id="precos-lista"></div>
         <div id="precos-readonly-note" style="display:none;font-size:0.78rem;color:var(--muted);margin-top:10px;padding:10px;background:var(--bg2);border-radius:8px">
           🔒 Apenas o faturamento pode editar esta tabela. Consulte aqui os valores e alíquotas de IPI.
@@ -2168,6 +2176,24 @@ Instagram: mariasilva"></textarea>
         </div>
         <div id="gt-em-andamento" style="margin-bottom:20px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px 18px"></div>
         <div id="gt-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px"></div>
+      </div>
+    </div>
+
+    <div id="view-hist-cliente" class="view">
+      <div style="max-width:860px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+          <div style="flex:1">
+            <div style="font-size:1.1rem;font-weight:700;color:var(--text)">Histórico do Cliente</div>
+            <div style="font-size:0.8rem;color:var(--muted)">Busque pelo código Sobber ou número de WhatsApp</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+          <div style="position:relative;flex:1;min-width:220px">
+            <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:0.9rem;pointer-events:none"></i>
+            <input id="hist-busca" type="text" placeholder="Ex: 34760 ou (51) 9 9999-9999" oninput="renderHistCliente()" style="width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:8px;padding:9px 12px 9px 34px;font-size:0.9rem;font-family:inherit;background:var(--bg2);color:var(--text);outline:none" />
+          </div>
+        </div>
+        <div id="hist-cliente-results"></div>
       </div>
     </div>
 
@@ -2949,14 +2975,14 @@ Instagram: mariasilva"></textarea>
   };
 
   const NAV_POR_ROLE = {
-    admin:       ['link','colar','cliente','solicitar','volumes','precos','solicitar-logo','agenda','minhas','fila','painel','config','prog-anexar','prog-fazer','modelagem','dashboard','atupreco','tarefas','gestao-time'],
+    admin:       ['link','colar','cliente','solicitar','volumes','precos','solicitar-logo','hist-cliente','agenda','minhas','fila','painel','config','prog-anexar','prog-fazer','modelagem','dashboard','atupreco','tarefas','gestao-time'],
     faturamento: ['link','colar','cliente','solicitar','volumes','precos','agenda','minhas','painel','config','modelagem','atupreco','tarefas'],
     design:      ['fila','painel','solicitar-logo','modelagem','atupreco','tarefas'],
     design_bordado: ['fila','painel','solicitar-logo','modelagem','prog-anexar','prog-fazer','atupreco','tarefas'],
     programacao: ['minhas','prog-anexar','prog-fazer','tarefas'],
     modelagem:   ['minhas','modelagem','atupreco','tarefas'],
     encaixe:     ['minhas','modelagem','atupreco','tarefas'],
-    vendedora:   ['link','colar','cliente','solicitar','volumes','solicitar-logo','agenda','minhas','modelagem','atupreco','tarefas'],
+    vendedora:   ['link','colar','cliente','solicitar','volumes','solicitar-logo','hist-cliente','agenda','minhas','modelagem','atupreco','tarefas'],
   };
 
   let usuariosConfig = []; // overrides de nome/usuario/senha por índice (editável pelo admin)
@@ -3065,7 +3091,7 @@ Instagram: mariasilva"></textarea>
 
   function aplicarNavPorRole() {
     const permitidos = NAV_POR_ROLE[currentUser?.role] || [];
-    ['link','colar','solicitar','minhas','volumes','precos','cliente','painel','config','solicitar-logo','agenda','prog-anexar','prog-fazer','modelagem','dashboard','atupreco','fila','tarefas','gestao-time'].forEach(v => {
+    ['link','colar','solicitar','minhas','volumes','precos','cliente','painel','config','solicitar-logo','hist-cliente','agenda','prog-anexar','prog-fazer','modelagem','dashboard','atupreco','fila','tarefas','gestao-time'].forEach(v => {
       const el = document.getElementById('nav-'+v);
       if (el) el.style.display = permitidos.includes(v) ? 'flex' : 'none';
     });
@@ -3074,7 +3100,7 @@ Instagram: mariasilva"></textarea>
     const grpFrt = document.getElementById('nav-group-frete');
     if (grpFrt) grpFrt.style.display = (permitidos.includes('solicitar')||permitidos.includes('volumes')) ? 'block' : 'none';
     const grpLogo = document.getElementById('nav-group-logo');
-    if (grpLogo) grpLogo.style.display = permitidos.includes('solicitar-logo') ? 'block' : 'none';
+    if (grpLogo) grpLogo.style.display = (permitidos.includes('solicitar-logo') || permitidos.includes('hist-cliente')) ? 'block' : 'none';
     const grpCom = document.getElementById('nav-group-comercial');
     if (grpCom) grpCom.style.display = (permitidos.includes('precos')||permitidos.includes('volumes')||permitidos.includes('agenda')) ? 'block' : 'none';
     const grpBord = document.getElementById('nav-group-bordado');
@@ -3107,7 +3133,7 @@ Instagram: mariasilva"></textarea>
   let nextId = 1;
   let filtroAtual = 'Todos';
   let modalId = null;
-  const TITULOS = { link:'Link pro cliente', colar:'Colar do WhatsApp', solicitar:'Solicitar Frete', minhas:'Minhas Solicitações', fila:'Minha Fila', dashboard:'Gestão', volumes:'Volumes e Peso', precos:'Tabela de Valores', 'solicitar-logo':'Solicitar Aplicação de Logo', agenda:'Agenda de Contatos', cliente:'Formulário', painel:'Demandas a Fazer', 'prog-anexar':'Pedidos a Anexar no ClickUp', 'prog-fazer':'Programas a Fazer', config:'Configurações', modelagem:'Modelagem', atupreco:'Atualização de Preço', tarefas:'Minhas Tarefas', 'gestao-time':'Gestão do Time' };
+  const TITULOS = { link:'Link pro cliente', colar:'Colar do WhatsApp', solicitar:'Solicitar Frete', minhas:'Minhas Solicitações', fila:'Minha Fila', dashboard:'Gestão', volumes:'Volumes e Peso', precos:'Tabela de Valores', 'solicitar-logo':'Solicitar Aplicação de Logo', 'hist-cliente':'Histórico do Cliente', agenda:'Agenda de Contatos', cliente:'Formulário', painel:'Demandas a Fazer', 'prog-anexar':'Pedidos a Anexar no ClickUp', 'prog-fazer':'Programas a Fazer', config:'Configurações', modelagem:'Modelagem', atupreco:'Atualização de Preço', tarefas:'Minhas Tarefas', 'gestao-time':'Gestão do Time' };
 
   // ── Persistência ─────────────────────────────────────────────────────────
   // Se o arquivo estiver rodando atrás do servidor (server.js), os dados vão pro
@@ -3366,6 +3392,53 @@ Instagram: mariasilva"></textarea>
             });
             grpMk.appendChild(mkRow);
             thumbsDiv.appendChild(grpMk);
+            hasThumb = true;
+          }
+
+          // Arte p/ bordar
+          var lb = a.logo_bordado;
+          if (lb && (lb.igual_original || _lbArqs(lb).length > 0)) {
+            var grpBordar = document.createElement('div');
+            grpBordar.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:2px';
+            var lblBordar = document.createElement('div');
+            lblBordar.style.cssText = 'font-size:0.55rem;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.4px;text-align:center';
+            lblBordar.textContent = 'P/ Bordar';
+            grpBordar.appendChild(lblBordar);
+            if (lb.igual_original) {
+              var igualSpan = document.createElement('div');
+              igualSpan.style.cssText = 'font-size:0.62rem;color:#059669;font-weight:700;white-space:nowrap';
+              igualSpan.textContent = '= original';
+              grpBordar.appendChild(igualSpan);
+            } else {
+              var bordarRow = document.createElement('div');
+              bordarRow.style.cssText = 'display:flex;gap:3px;flex-wrap:wrap';
+              _lbArqs(lb).forEach(function(arq) {
+                var isPdfB = arq.tipo === 'application/pdf';
+                if (isPdfB) {
+                  var lnkB = document.createElement('a');
+                  lnkB.href = arq.dataUrl; lnkB.download = arq.nome || 'arte-bordar'; lnkB.target = '_blank';
+                  lnkB.title = arq.nome || 'PDF';
+                  lnkB.style.cssText = 'width:40px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:5px;border:1px solid #fed7aa;background:#fff7ed;font-size:1.2rem;text-decoration:none;cursor:pointer';
+                  lnkB.textContent = '📄';
+                  bordarRow.appendChild(lnkB);
+                } else if (arq.dataUrl && arq.tipo && arq.tipo.startsWith('image/')) {
+                  var imgB = document.createElement('img');
+                  imgB.src = arq.dataUrl; imgB.style.cssText = 'width:40px;height:36px;object-fit:cover;border-radius:5px;border:2px solid #fed7aa;cursor:zoom-in';
+                  imgB.onclick = function(e){ e.stopPropagation(); abrirImgLightbox(arq.dataUrl); };
+                  imgB.onerror = function(){ this.style.display='none'; };
+                  bordarRow.appendChild(imgB);
+                } else if (arq.dataUrl) {
+                  var lnkBGen = document.createElement('a');
+                  lnkBGen.href = arq.dataUrl; lnkBGen.download = arq.nome || 'arte-bordar';
+                  lnkBGen.title = arq.nome || 'arquivo';
+                  lnkBGen.style.cssText = 'width:40px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:5px;border:2px solid #fed7aa;background:#fff7ed;font-size:1.2rem;text-decoration:none;cursor:pointer';
+                  lnkBGen.textContent = '⬇️';
+                  bordarRow.appendChild(lnkBGen);
+                }
+              });
+              grpBordar.appendChild(bordarRow);
+            }
+            thumbsDiv.appendChild(grpBordar);
             hasThumb = true;
           }
 
@@ -3640,6 +3713,220 @@ Instagram: mariasilva"></textarea>
   }
 
   // ── View 1: Pedidos a Anexar ─────────────────────────────────────
+  // ── Histórico do Cliente ─────────────────────────────────────────
+  function renderHistCliente() {
+    const wrap = document.getElementById('hist-cliente-results'); if (!wrap) return;
+    const busca = (document.getElementById('hist-busca')?.value || '').trim();
+    if (!busca) { wrap.innerHTML = '<div style="color:var(--muted);font-size:0.9rem;text-align:center;padding:40px 0">Digite um código Sobber ou número de WhatsApp para buscar.</div>'; return; }
+
+    const normT = t => (t||'').replace(/\D/g,'');
+    const buscaNorm = normT(busca);
+    const buscaLow = busca.toLowerCase();
+
+    // Find matching cadastros
+    const cads = cadastros.filter(c =>
+      (c.codigo_cliente && String(c.codigo_cliente).toLowerCase() === buscaLow) ||
+      (buscaNorm.length >= 8 && normT(c.telefone) && normT(c.telefone).includes(buscaNorm))
+    );
+    // Collect all codes and phones to match
+    const codigos = new Set(cads.map(c => c.codigo_cliente).filter(Boolean));
+    codigos.add(busca); // direct match
+    const codigosArr = [...codigos];
+
+    // Fretes
+    const fretesMatch = fretes.filter(f =>
+      codigosArr.some(cod => f.cliente_codigo && String(f.cliente_codigo).toLowerCase() === String(cod).toLowerCase()) ||
+      (buscaNorm.length >= 8 && normT(f.cliente_tel) && normT(f.cliente_tel).includes(buscaNorm))
+    );
+    // Logo applications
+    const logosMatch = aplicacoesLogo.filter(a =>
+      codigosArr.some(cod => a.cliente_codigo && String(a.cliente_codigo).toLowerCase() === String(cod).toLowerCase()) ||
+      (buscaNorm.length >= 8 && normT(a.cliente_tel) && normT(a.cliente_tel).includes(buscaNorm))
+    );
+    // Modelagens
+    const modsMatch = modelagens.filter(m =>
+      codigosArr.some(cod => m.codSobber && String(m.codSobber).toLowerCase() === String(cod).toLowerCase()) ||
+      (buscaNorm.length >= 8 && normT(m.whatsapp) && normT(m.whatsapp).includes(buscaNorm))
+    );
+
+    const total = fretesMatch.length + logosMatch.length + modsMatch.length + cads.length;
+    if (total === 0) {
+      wrap.innerHTML = '<div style="color:var(--muted);font-size:0.9rem;text-align:center;padding:40px 0">Nenhum registro encontrado para <strong>' + busca + '</strong>.</div>';
+      return;
+    }
+
+    // Determine display name
+    const nomeCliente = cads[0]?.nome_empresa || cads[0]?.nome_contato || logosMatch[0]?.cliente_nome || fretesMatch[0]?.cliente_nome || modsMatch[0]?.cliente || busca;
+    const codDisplay = cads[0]?.codigo_cliente || logosMatch[0]?.cliente_codigo || fretesMatch[0]?.cliente_codigo || modsMatch[0]?.codSobber || '';
+    const telDisplay = cads[0]?.telefone || logosMatch[0]?.cliente_tel || fretesMatch[0]?.cliente_tel || modsMatch[0]?.whatsapp || '';
+
+    let html = '';
+
+    // Profile card
+    html += '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">';
+    html += '<div style="width:48px;height:48px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-user" style="color:#fff;font-size:1.3rem"></i></div>';
+    html += '<div style="flex:1"><div style="font-size:1.05rem;font-weight:800;color:var(--text)">' + nomeCliente + '</div>';
+    if (codDisplay) html += '<div style="font-size:0.8rem;color:var(--muted);margin-top:2px">Código Sobber: <strong>' + codDisplay + '</strong></div>';
+    if (telDisplay) html += '<div style="font-size:0.8rem;color:var(--muted)">WhatsApp: ' + telDisplay + '</div>';
+    html += '</div>';
+    html += '<div style="display:flex;gap:12px;flex-wrap:wrap">';
+    html += '<div style="text-align:center"><div style="font-size:1.3rem;font-weight:800;color:var(--red)">' + logosMatch.length + '</div><div style="font-size:0.7rem;color:var(--muted)">Logos</div></div>';
+    html += '<div style="text-align:center"><div style="font-size:1.3rem;font-weight:800;color:#0891b2">' + fretesMatch.length + '</div><div style="font-size:0.7rem;color:var(--muted)">Fretes</div></div>';
+    html += '<div style="text-align:center"><div style="font-size:1.3rem;font-weight:800;color:#7c3aed">' + modsMatch.length + '</div><div style="font-size:0.7rem;color:var(--muted)">Modelagens</div></div>';
+    html += '</div></div>';
+
+    // Cadastros section
+    if (cads.length) {
+      html += _histSection('Cadastro', '#6b7280', cads.map(c =>
+        '<div style="background:#fff;border-radius:8px;padding:10px 14px;border-left:3px solid #6b7280;font-size:0.82rem;color:var(--text)">' +
+        '<div style="font-weight:700">' + (c.nome_empresa||c.nome_contato||'—') + (c.codigo_cliente?' <span style="color:var(--muted);font-weight:400">· ' + c.codigo_cliente + '</span>':'') + '</div>' +
+        (c.nome_contato&&c.nome_empresa?'<div style="color:var(--muted)">' + c.nome_contato + '</div>':'') +
+        '<div style="color:var(--muted);margin-top:3px">' + [c.telefone,c.email,c.cidade].filter(Boolean).join(' · ') + '</div>' +
+        '</div>'
+      ).join(''));
+    }
+
+    // Logo applications section
+    if (logosMatch.length) {
+      const logosSorted = [...logosMatch].sort((a,b) => (b.criado_em||'').localeCompare(a.criado_em||''));
+      html += _histSection('Aplicações de Logo', '#CB0201', logosSorted.map(a => _histLogoCard(a)).join(''));
+    }
+
+    // Fretes section
+    if (fretesMatch.length) {
+      const fresSorted = [...fretesMatch].sort((a,b) => ((b.alteracao_em||b.criado_em||'').localeCompare(a.alteracao_em||a.criado_em||'')));
+      html += _histSection('Fretes / Orçamentos', '#0891b2', fresSorted.map(f =>
+        '<div style="background:#fff;border-radius:8px;padding:10px 14px;margin-bottom:6px;border-left:3px solid #0891b2;display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer" onclick="abrirModalFrete(' + f.id + ')">' +
+        '<div style="flex:1;min-width:140px"><div style="font-weight:700;font-size:0.85rem">' + (f.referencias||[]).join(' + ') + '</div>' +
+        '<div style="font-size:0.72rem;color:var(--muted)">' + (f.vendedora||'') + ' · ' + fmtData(f.criado_em) + '</div></div>' +
+        '<span style="font-size:0.72rem;font-weight:700;padding:2px 9px;border-radius:20px;background:' + (f.status==='Concluído'?'#d1fae5':'#e0f2fe') + ';color:' + (f.status==='Concluído'?'#065f46':'#0369a1') + '">' + (f.status||'—') + '</span>' +
+        '</div>'
+      ).join(''));
+    }
+
+    // Modelagens section
+    if (modsMatch.length) {
+      const modsSorted = [...modsMatch].sort((a,b) => ((b.atualizado_em||b.criado_em||'').localeCompare(a.atualizado_em||a.criado_em||'')));
+      html += _histSection('Modelagens', '#7c3aed', modsSorted.map(m =>
+        '<div style="background:#fff;border-radius:8px;padding:10px 14px;margin-bottom:6px;border-left:3px solid #7c3aed;display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer" onclick="abrirDetModelagem(' + m.id + ')">' +
+        '<div style="flex:1;min-width:140px"><div style="font-weight:700;font-size:0.85rem">' + (m.cliente||'—') + '</div>' +
+        '<div style="font-size:0.72rem;color:var(--muted)">' + (m.tipo==='nova'?'Nova':'Com Alteração') + (m.codSobber?' · '+m.codSobber:'') + ' · ' + (m.vendedora||'') + ' · ' + fmtData(m.criado_em) + '</div></div>' +
+        '<span style="font-size:0.72rem;font-weight:700;padding:2px 9px;border-radius:20px;background:#f3e8ff;color:#6d28d9">' + (m.status||'—') + '</span>' +
+        '</div>'
+      ).join(''));
+    }
+
+    wrap.innerHTML = html;
+  }
+
+  function _histSection(titulo, cor, bodyHtml) {
+    return '<div style="margin-bottom:22px">' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">' +
+      '<div style="width:4px;height:18px;border-radius:2px;background:' + cor + '"></div>' +
+      '<div style="font-size:0.85rem;font-weight:700;color:var(--text)">' + titulo + '</div>' +
+      '</div>' + bodyHtml + '</div>';
+  }
+
+  function _histLogoCard(a) {
+    const concluido = a.status === 'entregue' || a.status === 'concluido' || a.status === 'producao' || a.status === 'entregue_cliente';
+    const statusMap = { 'producao':'Em Produção','entregue':'Entregue','entregue_cliente':'Entregue ao cliente','reprovado':'Ajuste solicitado','ajuste_bordado':'Corrigir bordado','ajuste_layout':'Corrigir layout','duvida':'Em dúvida','':`Aguardando` };
+    const statusLabel = statusMap[a.status||''] || a.status || 'Aguardando';
+    const refsText = (a.refs_cores||[]).length ? (a.refs_cores||[]).map(rc=>rc.ref+(rc.cor?' · '+rc.cor:'')).join(' + ') : (a.referencias||[]).join(' + ') || '—';
+
+    // Thumbnails
+    const arqThumb = (a.arquivos_logo||[]).find(x => x && x.dataUrl && x.tipo && x.tipo.startsWith('image/'));
+    const mkThumb  = (a.mockups||[]).find(m => m && m.dataUrl && m.tipo && m.tipo.startsWith('image/'));
+    const lb       = a.logo_bordado;
+    const lbArqs   = _lbArqs(lb);
+    const lbThumb  = lbArqs.find(x => x && x.dataUrl && x.tipo && x.tipo.startsWith('image/'));
+
+    let thumbs = '';
+    if (arqThumb) thumbs += '<img src="' + arqThumb.dataUrl + '" onclick="abrirImgLightbox(this.src)" style="width:36px;height:32px;object-fit:cover;border-radius:4px;border:1px solid #e2e8f0;cursor:zoom-in" title="Arte" />';
+    if (lb && lb.igual_original) thumbs += '<span style="font-size:0.6rem;color:#059669;font-weight:700;white-space:nowrap;align-self:center">= orig</span>';
+    else if (lbThumb) thumbs += '<img src="' + lbThumb.dataUrl + '" onclick="abrirImgLightbox(this.src)" style="width:36px;height:32px;object-fit:cover;border-radius:4px;border:2px solid #fed7aa;cursor:zoom-in" title="Arte p/ bordar" />';
+    if (mkThumb) thumbs += '<img src="' + mkThumb.dataUrl + '" onclick="abrirImgLightbox(this.src)" style="width:36px;height:32px;object-fit:cover;border-radius:4px;border:1px solid #e2e8f0;cursor:zoom-in" title="Mockup" />';
+
+    const podeReenviar = (a.status === 'entregue' || a.status === 'entregue_cliente' || a.status === 'producao');
+    const btnReenviar = podeReenviar
+      ? '<button type="button" onclick="abrirModalReenvioHist(' + a.id + ')" style="padding:4px 11px;font-size:0.7rem;font-weight:700;border-radius:6px;cursor:pointer;border:none;background:#CB0201;color:#fff;white-space:nowrap">Reenviar</button>'
+      : '';
+
+    return '<div style="background:#fff;border-radius:8px;padding:10px 14px;margin-bottom:6px;border-left:3px solid #CB0201;display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer" onclick="if(!event.target.closest(\'button,img\'))abrirModalHistorico(' + a.id + ')">' +
+      '<div style="flex:1;min-width:140px">' +
+      '<div style="font-weight:700;font-size:0.85rem;color:var(--text)">' + (a.logomarca||'—') + '</div>' +
+      '<div style="font-size:0.72rem;color:var(--muted)">' + refsText + ' · ' + (a.vendedora||'') + ' · ' + fmtData(a.criado_em) + '</div>' +
+      '</div>' +
+      (thumbs ? '<div style="display:flex;gap:4px;align-items:center">' + thumbs + '</div>' : '') +
+      '<div style="display:flex;align-items:center;gap:6px">' +
+      '<span style="font-size:0.72rem;font-weight:700;padding:2px 9px;border-radius:20px;background:#fff1f2;color:#be123c">' + statusLabel + '</span>' +
+      btnReenviar +
+      '</div>' +
+      '</div>';
+  }
+
+  // Modal reenviar com seleção de refs
+  function abrirModalReenvioHist(id) {
+    const a = aplicacoesLogo.find(x => x.id === id); if (!a) return;
+    const refs = a.refs_cores && a.refs_cores.length ? a.refs_cores : (a.referencias||[]).map(r => ({ ref:r, cor:a.cor_mala||'' }));
+    let html = '<div id="modal-reenvio-hist" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px">';
+    html += '<div style="background:#fff;border-radius:14px;padding:24px;max-width:440px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.18)">';
+    html += '<div style="font-size:1rem;font-weight:800;color:#0f172a;margin-bottom:4px">Reenviar para Produção</div>';
+    html += '<div style="font-size:0.8rem;color:#64748b;margin-bottom:16px">Selecione as referências para este novo pedido:</div>';
+    html += '<div style="font-size:0.85rem;font-weight:700;color:#475569;margin-bottom:8px">' + (a.logomarca||'—') + '</div>';
+    html += '<div id="reenvio-refs-list" style="display:flex;flex-direction:column;gap:7px;margin-bottom:18px">';
+    refs.forEach(function(rc, i) {
+      html += '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px">';
+      html += '<input type="checkbox" checked data-idx="' + i + '" style="width:16px;height:16px;accent-color:#CB0201" />';
+      html += '<span style="font-size:0.85rem;font-weight:700">' + rc.ref + (rc.cor?' <span style="font-weight:400;color:#64748b">· ' + rc.cor + '</span>':'') + '</span>';
+      html += '</label>';
+    });
+    html += '</div>';
+    html += '<div style="display:flex;gap:8px;justify-content:flex-end">';
+    html += '<button type="button" onclick="document.getElementById(\'modal-reenvio-hist\').remove()" style="padding:7px 16px;font-size:0.82rem;border:1px solid #d1d5db;background:#f3f4f6;color:#374151;border-radius:8px;cursor:pointer;font-weight:600">Cancelar</button>';
+    html += '<button type="button" onclick="confirmarReenvioHist(' + id + ')" style="padding:7px 18px;font-size:0.82rem;border:none;background:#CB0201;color:#fff;border-radius:8px;cursor:pointer;font-weight:700">Enviar para Produção</button>';
+    html += '</div></div></div>';
+    document.body.insertAdjacentHTML('beforeend', html);
+  }
+
+  function confirmarReenvioHist(id) {
+    const a = aplicacoesLogo.find(x => x.id === id); if (!a) return;
+    const modal = document.getElementById('modal-reenvio-hist'); if (!modal) return;
+    const checkboxes = modal.querySelectorAll('#reenvio-refs-list input[type=checkbox]');
+    const refsOrig = a.refs_cores && a.refs_cores.length ? a.refs_cores : (a.referencias||[]).map(r => ({ ref:r, cor:a.cor_mala||'' }));
+    const refsSel = [];
+    checkboxes.forEach(function(cb, i) { if (cb.checked) refsSel.push(refsOrig[i]); });
+    if (!refsSel.length) { mostrarToast('⚠️ Selecione ao menos uma referência.'); return; }
+
+    // Deep copy da aplicação original com dados relevantes
+    const nova = {
+      id: Date.now(),
+      logomarca:    a.logomarca,
+      cliente_nome: a.cliente_nome,
+      cliente_codigo: a.cliente_codigo,
+      cliente_tel:  a.cliente_tel,
+      vendedora:    a.vendedora,
+      cor_mala:     a.cor_mala,
+      observacoes:  '',
+      refs_cores:   JSON.parse(JSON.stringify(refsSel)),
+      referencias:  refsSel.map(rc => rc.ref),
+      referencias_producao: refsSel.map(rc => rc.ref),
+      refs_cores_producao:  JSON.parse(JSON.stringify(refsSel)),
+      arquivos_logo: JSON.parse(JSON.stringify(a.arquivos_logo||[])),
+      logo_bordado:  a.logo_bordado ? JSON.parse(JSON.stringify(a.logo_bordado)) : null,
+      mockups: JSON.parse(JSON.stringify(a.mockups||[])),
+      status: 'producao',
+      anexado_clickup: false,
+      criado_em: new Date().toISOString(),
+      log: [{ usuario: currentUser?.nome||'Sistema', acao: 'Reenviado para produção a partir do histórico (base: #' + a.id + ')', em: new Date().toISOString() }]
+    };
+
+    aplicacoesLogo.push(nova);
+    modal.remove();
+    salvarEstado();
+    renderHistCliente();
+    mostrarToast('✅ Reenviado! Pedido criado e já está em Pedidos a Anexar.');
+  }
+
   function renderProgAnexar() {
     const list = document.getElementById('prog-anexar-list'); if (!list) return;
     const busca = (document.getElementById('prog-busca-anexar')?.value || '').toLowerCase().trim();
@@ -3848,6 +4135,7 @@ Instagram: mariasilva"></textarea>
   // IDs excluídos nesta sessão — o mergeById não os reinsere vindos do servidor
   var _deletedIds = { cadastros: new Set(), fretes: new Set(), logos: new Set(), modelagens: new Set(), atupreco: new Set(), tarefas: new Set() };
   var _deletedRefs = new Set(); // refs excluídas da tabelaPrecos nesta sessão
+  var _precosLocalEditTs = 0; // timestamp do último save local de preços (evita overwrite por polling)
 
   // Faz merge de dois arrays pelo campo "id", priorizando a versão com log mais recente.
   // Se o local for mais novo → mantém local E sinaliza needsSave=true para re-enviar ao servidor.
@@ -3940,7 +4228,7 @@ Instagram: mariasilva"></textarea>
         if (_deletedRefs.has(r)) return;
         if (localRefs.has(r)) {
           // Só atualiza do servidor se não há save local em voo (evita sobrescrever edição recente)
-          if (!_saveLock && !_savePendingState && !_saveDebounceTimer) {
+          if (!_saveLock && !_savePendingState && !_saveDebounceTimer && (Date.now() - _precosLocalEditTs > 60000)) {
             tabelaPrecos[localRefs.get(r)] = p;
           }
         } else {
@@ -4190,6 +4478,7 @@ Instagram: mariasilva"></textarea>
     if (isCad)               { setTab(view); renderLinksVendedoras(); }
     if (view === 'solicitar') { renderVendedoras(); autoFillVendedoraFrete(); }
     if (view === 'solicitar-logo') { renderVendedoras(); autoFillVendedoraLogo(); }
+    if (view === 'hist-cliente') { setTimeout(function(){ var el=document.getElementById('hist-busca'); if(el) el.focus(); }, 100); renderHistCliente(); }
     if (view === 'agenda') { renderAgendaView(); }
     if (view === 'prog-anexar') { renderProgAnexar(); }
     if (view === 'prog-fazer')  { renderProgFazer(); }
@@ -5114,7 +5403,10 @@ Instagram: mariasilva"></textarea>
       lista.innerHTML = '<div style="text-align:center;color:var(--muted);padding:32px;font-size:0.88rem">Nenhuma referência cadastrada ainda.</div>';
       return;
     }
-    const sorted = [...tabelaPrecos].sort((a,b) => (a.ref||'').localeCompare(b.ref||''));
+    const _precosBusca = (document.getElementById('precos-busca')?.value || '').toLowerCase().trim();
+    const sorted = [...tabelaPrecos]
+      .filter(p => !_precosBusca || (p.ref||'').toLowerCase().includes(_precosBusca) || (p.codigo_sobber||'').toLowerCase().includes(_precosBusca))
+      .sort((a,b) => (a.ref||'').localeCompare(b.ref||''));
     const cols = '1.2fr 1fr 90px 90px 60px' + (editavel ? ' 70px' : '');
     const hdr = '<div style="display:grid;grid-template-columns:'+cols+';gap:0;padding:6px 10px;background:var(--bg2,#f8f8f6);border-bottom:2px solid var(--border);font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;border-radius:8px 8px 0 0">'
       + '<div>Referência</div><div>Cód. Sobber</div><div>R$ PF</div><div>R$ PJ</div><div>IPI?</div>'
@@ -5179,6 +5471,7 @@ Instagram: mariasilva"></textarea>
     const dados = { ref, codigo_sobber: cod, valor_pf: vPf, valor_pj: vPj, tem_ipi: temIpi };
     if (_editandoPrecoIdx !== null) { tabelaPrecos[_editandoPrecoIdx] = dados; mostrarToast('💰 Valor atualizado!'); }
     else { tabelaPrecos.push(dados); mostrarToast('💰 Referência adicionada!'); }
+    _precosLocalEditTs = Date.now();
     salvarEstado();
     cancelarFormPreco();
     renderTabelaPrecos();
@@ -5344,8 +5637,10 @@ Instagram: mariasilva"></textarea>
       const qtd = parseInt(item.quantidade) || 0;
       const entrada = tabelaPrecos.find(p => p.ref.toLowerCase() === (item.referencia||'').trim().toLowerCase());
       if (entrada) {
-        // Backward compat: fallback to valor_unitario for old records
-        const val = ((tp === 'pf' ? entrada.valor_pf : entrada.valor_pj) || entrada.valor_unitario || 0) * qtd;
+        // Prioriza valor_ajustado (set pela vendedora); fallback para tabela de preços
+        const val = (item.valor_ajustado && item.valor_ajustado > 0)
+          ? item.valor_ajustado
+          : ((tp === 'pf' ? entrada.valor_pf : entrada.valor_pj) || entrada.valor_unitario || 0) * qtd;
         if (entrada.tem_ipi) valorComIpi += val; else valorSemIpi += val;
       } else {
         faltando.push({ referencia: item.referencia, quantidade: qtd });

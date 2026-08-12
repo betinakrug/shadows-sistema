@@ -390,19 +390,34 @@ app.post('/api/gerar-pdf', express.json({ limit: '20mb' }), (req, res) => {
 });
 
 // ── Upload de arquivos ────────────────────────────────────────────────────────
-app.post('/api/upload', express.json({ limit: '30mb' }), (req, res) => {
+app.post('/api/upload', express.json({ limit: '20mb' }), (req, res) => {
   try {
     const { data, nome } = req.body || {};
     if (!data || typeof data !== 'string' || !data.startsWith('data:'))
       return res.status(400).json({ erro: 'Campo "data" ausente ou inválido.' });
     const match = data.match(/^data:([^;]+);base64,(.+)$/s);
     if (!match) return res.status(400).json({ erro: 'Formato base64 inválido.' });
+
+    // Verificar tipo de arquivo pela extensão
+    const nomeExt = ((nome || '').split('.').pop() || '').toLowerCase();
+    const PERMITIDOS = ['jpg','jpeg','png','pdf','cdr','cdrx','ai','mp4','mov','avi','wmv','webm','mkv'];
+    if (nomeExt && !PERMITIDOS.includes(nomeExt)) {
+      return res.status(400).json({ erro: `Tipo de arquivo não permitido (.${nomeExt}). Permitidos: JPG, PNG, PDF, CDR, MP4, MOV, AVI e outros vídeos.` });
+    }
+
+    // Verificar tamanho (máx 100MB)
+    const buffer = Buffer.from(match[2], 'base64');
+    const MAX_BYTES = 10 * 1024 * 1024;
+    if (buffer.length > MAX_BYTES) {
+      return res.status(400).json({ erro: `Arquivo muito grande (${(buffer.length/1024/1024).toFixed(0)}MB). Limite: 10MB.` });
+    }
+
     const mime = match[1];
-    const ext  = (mime.split('/')[1] || 'bin').split('+')[0].replace(/[^a-z0-9]/g, '');
+    const ext  = nomeExt || (mime.split('/')[1] || 'bin').split('+')[0].replace(/[^a-z0-9]/g, '');
     const safe = (nome || '').replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 50);
     const fileName = Date.now() + '-' + Math.random().toString(36).slice(2, 7) + (safe ? '-' + safe : '') + '.' + ext;
     const filePath = path.join(UPLOADS_DIR, fileName);
-    fs.writeFileSync(filePath, Buffer.from(match[2], 'base64'));
+    fs.writeFileSync(filePath, buffer);
     res.json({ ok: true, url: '/files/' + fileName });
   } catch(err) { res.status(500).json({ erro: err.message }); }
 });
