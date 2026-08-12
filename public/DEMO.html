@@ -1325,6 +1325,10 @@ Instagram: mariasilva"></textarea>
           <div class="filtro-pill active" onclick="setFrtFilaFiltro('pendentes')">Pendentes</div>
           <div class="filtro-pill" onclick="setFrtFilaFiltro('concluidos')">Concluídos</div>
         </div>
+        <div style="position:relative;margin-bottom:12px">
+          <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:0.9rem;pointer-events:none"></i>
+          <input id="frt-busca" type="text" placeholder="Buscar por cliente, cód. Sobber ou CEP..." oninput="frtBusca=this.value.toLowerCase().trim();renderTabelaFrete()" style="width:100%;box-sizing:border-box;padding:8px 12px 8px 32px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;font-family:inherit;background:var(--bg2);color:var(--text);outline:none" />
+        </div>
         <div class="table-wrap">
           <table>
             <thead>
@@ -2184,13 +2188,13 @@ Instagram: mariasilva"></textarea>
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap">
           <div style="flex:1">
             <div style="font-size:1.1rem;font-weight:700;color:var(--text)">Histórico do Cliente</div>
-            <div style="font-size:0.8rem;color:var(--muted)">Busque pelo código Sobber ou número de WhatsApp</div>
+            <div style="font-size:0.8rem;color:var(--muted)">Busque pelo código Sobber, WhatsApp ou nome do cliente</div>
           </div>
         </div>
         <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
           <div style="position:relative;flex:1;min-width:220px">
             <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:0.9rem;pointer-events:none"></i>
-            <input id="hist-busca" type="text" placeholder="Ex: 34760 ou (51) 9 9999-9999" oninput="renderHistCliente()" style="width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:8px;padding:9px 12px 9px 34px;font-size:0.9rem;font-family:inherit;background:var(--bg2);color:var(--text);outline:none" />
+            <input id="hist-busca" type="text" placeholder="Ex: 34760 ou (51) 9 9999-9999 ou Eduardo" oninput="renderHistCliente()" style="width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:8px;padding:9px 12px 9px 34px;font-size:0.9rem;font-family:inherit;background:var(--bg2);color:var(--text);outline:none" />
           </div>
         </div>
         <div id="hist-cliente-results"></div>
@@ -2976,7 +2980,7 @@ Instagram: mariasilva"></textarea>
 
   const NAV_POR_ROLE = {
     admin:       ['link','colar','cliente','solicitar','volumes','precos','solicitar-logo','hist-cliente','agenda','minhas','fila','painel','config','prog-anexar','prog-fazer','modelagem','dashboard','atupreco','tarefas','gestao-time'],
-    faturamento: ['link','colar','cliente','solicitar','volumes','precos','agenda','minhas','painel','config','modelagem','atupreco','tarefas'],
+    faturamento: ['link','colar','cliente','solicitar','volumes','precos','agenda','minhas','painel','config','modelagem','atupreco','tarefas','hist-cliente'],
     design:      ['fila','painel','solicitar-logo','modelagem','atupreco','tarefas'],
     design_bordado: ['fila','painel','solicitar-logo','modelagem','prog-anexar','prog-fazer','atupreco','tarefas'],
     programacao: ['minhas','prog-anexar','prog-fazer','tarefas'],
@@ -3714,109 +3718,263 @@ Instagram: mariasilva"></textarea>
 
   // ── View 1: Pedidos a Anexar ─────────────────────────────────────
   // ── Histórico do Cliente ─────────────────────────────────────────
+  var _histPrefills = [];
   function renderHistCliente() {
-    const wrap = document.getElementById('hist-cliente-results'); if (!wrap) return;
-    const busca = (document.getElementById('hist-busca')?.value || '').trim();
-    if (!busca) { wrap.innerHTML = '<div style="color:var(--muted);font-size:0.9rem;text-align:center;padding:40px 0">Digite um código Sobber ou número de WhatsApp para buscar.</div>'; return; }
+    var wrap = document.getElementById('hist-cliente-results'); if (!wrap) return;
+    _histPrefills = [];
+    var busca = (document.getElementById('hist-busca') ? document.getElementById('hist-busca').value : '').trim();
+    if (!busca) { wrap.innerHTML = '<div style="color:var(--muted);font-size:0.9rem;text-align:center;padding:40px 0">Digite um código Sobber, WhatsApp ou nome para buscar.</div>'; return; }
 
-    const normT = t => (t||'').replace(/\D/g,'');
-    const buscaNorm = normT(busca);
-    const buscaLow = busca.toLowerCase();
+    var normT = function(t) { return (t||'').replace(/\D/g,''); };
+    var buscaNorm = normT(busca);
+    var buscaLow = busca.toLowerCase();
+    var isTelBusca = buscaNorm.length >= 8;
+    var isNameBusca = busca.length >= 3;
 
-    // Find matching cadastros
-    const cads = cadastros.filter(c =>
-      (c.codigo_cliente && String(c.codigo_cliente).toLowerCase() === buscaLow) ||
-      (buscaNorm.length >= 8 && normT(c.telefone) && normT(c.telefone).includes(buscaNorm))
-    );
-    // Collect all codes and phones to match
-    const codigos = new Set(cads.map(c => c.codigo_cliente).filter(Boolean));
-    codigos.add(busca); // direct match
-    const codigosArr = [...codigos];
+    function matchesBusca(cod, tel, nome) {
+      if (cod && String(cod).toLowerCase() === buscaLow) return true;
+      if (isTelBusca && tel && normT(tel).includes(buscaNorm)) return true;
+      if (isNameBusca && nome && nome.toLowerCase().includes(buscaLow)) return true;
+      return false;
+    }
+    function clientKey(cod, tel) {
+      var t = normT(tel||'');
+      if (t.length >= 8) return 'tel:' + t.slice(-9);
+      if (cod) return 'cod:' + String(cod).toLowerCase();
+      return null;
+    }
 
-    // Fretes
-    const fretesMatch = fretes.filter(f =>
-      codigosArr.some(cod => f.cliente_codigo && String(f.cliente_codigo).toLowerCase() === String(cod).toLowerCase()) ||
-      (buscaNorm.length >= 8 && normT(f.cliente_tel) && normT(f.cliente_tel).includes(buscaNorm))
-    );
-    // Logo applications
-    const logosMatch = aplicacoesLogo.filter(a =>
-      codigosArr.some(cod => a.cliente_codigo && String(a.cliente_codigo).toLowerCase() === String(cod).toLowerCase()) ||
-      (buscaNorm.length >= 8 && normT(a.cliente_tel) && normT(a.cliente_tel).includes(buscaNorm))
-    );
-    // Modelagens
-    const modsMatch = modelagens.filter(m =>
-      codigosArr.some(cod => m.codSobber && String(m.codSobber).toLowerCase() === String(cod).toLowerCase()) ||
-      (buscaNorm.length >= 8 && normT(m.whatsapp) && normT(m.whatsapp).includes(buscaNorm))
-    );
+    var groups = {};
+    function ensureGroup(key, nome, cod, tel) {
+      if (!groups[key]) groups[key] = {cads:[],fretes:[],logos:[],mods:[],nome:'',cod:'',tel:''};
+      var g = groups[key];
+      if (!g.nome && nome) g.nome = nome;
+      if (!g.cod && cod) g.cod = String(cod);
+      if (!g.tel && tel) g.tel = tel;
+      return g;
+    }
 
-    const total = fretesMatch.length + logosMatch.length + modsMatch.length + cads.length;
-    if (total === 0) {
+    cadastros.forEach(function(c) {
+      var nome = c.nome_empresa||c.nome_contato||'';
+      if (!matchesBusca(c.codigo_cliente, c.telefone, nome)) return;
+      var k = clientKey(c.codigo_cliente, c.telefone) || ('nome:'+nome.toLowerCase());
+      ensureGroup(k, nome, c.codigo_cliente, c.telefone).cads.push(c);
+    });
+    fretes.forEach(function(f) {
+      if (!matchesBusca(f.cliente_codigo, f.cliente_tel, f.cliente_nome)) return;
+      var k = clientKey(f.cliente_codigo, f.cliente_tel) || ('nome:'+(f.cliente_nome||'').toLowerCase());
+      ensureGroup(k, f.cliente_nome, f.cliente_codigo, f.cliente_tel).fretes.push(f);
+    });
+    aplicacoesLogo.forEach(function(a) {
+      if (!matchesBusca(a.cliente_codigo, a.cliente_tel, a.cliente_nome)) return;
+      var k = clientKey(a.cliente_codigo, a.cliente_tel) || ('nome:'+(a.cliente_nome||'').toLowerCase());
+      ensureGroup(k, a.cliente_nome, a.cliente_codigo, a.cliente_tel).logos.push(a);
+    });
+    modelagens.forEach(function(m) {
+      if (!matchesBusca(m.codSobber, m.whatsapp, m.cliente)) return;
+      var k = clientKey(m.codSobber, m.whatsapp) || ('nome:'+(m.cliente||'').toLowerCase());
+      ensureGroup(k, m.cliente, m.codSobber, m.whatsapp).mods.push(m);
+    });
+
+    var keys = Object.keys(groups);
+    if (!keys.length) {
       wrap.innerHTML = '<div style="color:var(--muted);font-size:0.9rem;text-align:center;padding:40px 0">Nenhum registro encontrado para <strong>' + busca + '</strong>.</div>';
       return;
     }
 
-    // Determine display name
-    const nomeCliente = cads[0]?.nome_empresa || cads[0]?.nome_contato || logosMatch[0]?.cliente_nome || fretesMatch[0]?.cliente_nome || modsMatch[0]?.cliente || busca;
-    const codDisplay = cads[0]?.codigo_cliente || logosMatch[0]?.cliente_codigo || fretesMatch[0]?.cliente_codigo || modsMatch[0]?.codSobber || '';
-    const telDisplay = cads[0]?.telefone || logosMatch[0]?.cliente_tel || fretesMatch[0]?.cliente_tel || modsMatch[0]?.whatsapp || '';
-
-    let html = '';
-
-    // Profile card
-    html += '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">';
-    html += '<div style="width:48px;height:48px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-user" style="color:#fff;font-size:1.3rem"></i></div>';
-    html += '<div style="flex:1"><div style="font-size:1.05rem;font-weight:800;color:var(--text)">' + nomeCliente + '</div>';
-    if (codDisplay) html += '<div style="font-size:0.8rem;color:var(--muted);margin-top:2px">Código Sobber: <strong>' + codDisplay + '</strong></div>';
-    if (telDisplay) html += '<div style="font-size:0.8rem;color:var(--muted)">WhatsApp: ' + telDisplay + '</div>';
-    html += '</div>';
-    html += '<div style="display:flex;gap:12px;flex-wrap:wrap">';
-    html += '<div style="text-align:center"><div style="font-size:1.3rem;font-weight:800;color:var(--red)">' + logosMatch.length + '</div><div style="font-size:0.7rem;color:var(--muted)">Logos</div></div>';
-    html += '<div style="text-align:center"><div style="font-size:1.3rem;font-weight:800;color:#0891b2">' + fretesMatch.length + '</div><div style="font-size:0.7rem;color:var(--muted)">Fretes</div></div>';
-    html += '<div style="text-align:center"><div style="font-size:1.3rem;font-weight:800;color:#7c3aed">' + modsMatch.length + '</div><div style="font-size:0.7rem;color:var(--muted)">Modelagens</div></div>';
-    html += '</div></div>';
-
-    // Cadastros section
-    if (cads.length) {
-      html += _histSection('Cadastro', '#6b7280', cads.map(c =>
-        '<div style="background:#fff;border-radius:8px;padding:10px 14px;border-left:3px solid #6b7280;font-size:0.82rem;color:var(--text)">' +
-        '<div style="font-weight:700">' + (c.nome_empresa||c.nome_contato||'—') + (c.codigo_cliente?' <span style="color:var(--muted);font-weight:400">· ' + c.codigo_cliente + '</span>':'') + '</div>' +
-        (c.nome_contato&&c.nome_empresa?'<div style="color:var(--muted)">' + c.nome_contato + '</div>':'') +
-        '<div style="color:var(--muted);margin-top:3px">' + [c.telefone,c.email,c.cidade].filter(Boolean).join(' · ') + '</div>' +
-        '</div>'
-      ).join(''));
+    var html = '';
+    if (keys.length > 1) {
+      html += '<div style="color:var(--muted);font-size:0.82rem;margin-bottom:14px;text-align:center">' + keys.length + ' clientes encontrados para <strong>' + busca + '</strong></div>';
     }
 
-    // Logo applications section
-    if (logosMatch.length) {
-      const logosSorted = [...logosMatch].sort((a,b) => (b.criado_em||'').localeCompare(a.criado_em||''));
-      html += _histSection('Aplicações de Logo', '#CB0201', logosSorted.map(a => _histLogoCard(a)).join(''));
-    }
+    keys.forEach(function(key) {
+      var g = groups[key];
+      var nomeCliente = g.nome || busca;
+      var codDisplay = g.cod || '';
+      var telDisplay = g.tel || '';
 
-    // Fretes section
-    if (fretesMatch.length) {
-      const fresSorted = [...fretesMatch].sort((a,b) => ((b.alteracao_em||b.criado_em||'').localeCompare(a.alteracao_em||a.criado_em||'')));
-      html += _histSection('Fretes / Orçamentos', '#0891b2', fresSorted.map(f =>
-        '<div style="background:#fff;border-radius:8px;padding:10px 14px;margin-bottom:6px;border-left:3px solid #0891b2;display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer" onclick="abrirModalFrete(' + f.id + ')">' +
-        '<div style="flex:1;min-width:140px"><div style="font-weight:700;font-size:0.85rem">' + (f.referencias||[]).join(' + ') + '</div>' +
-        '<div style="font-size:0.72rem;color:var(--muted)">' + (f.vendedora||'') + ' · ' + fmtData(f.criado_em) + '</div></div>' +
-        '<span style="font-size:0.72rem;font-weight:700;padding:2px 9px;border-radius:20px;background:' + (f.status==='Concluído'?'#d1fae5':'#e0f2fe') + ';color:' + (f.status==='Concluído'?'#065f46':'#0369a1') + '">' + (f.status||'—') + '</span>' +
-        '</div>'
-      ).join(''));
-    }
+      if (keys.length > 1) html += '<div style="border:2px solid var(--border);border-radius:14px;padding:16px;margin-bottom:24px">';
 
-    // Modelagens section
-    if (modsMatch.length) {
-      const modsSorted = [...modsMatch].sort((a,b) => ((b.atualizado_em||b.criado_em||'').localeCompare(a.atualizado_em||a.criado_em||'')));
-      html += _histSection('Modelagens', '#7c3aed', modsSorted.map(m =>
-        '<div style="background:#fff;border-radius:8px;padding:10px 14px;margin-bottom:6px;border-left:3px solid #7c3aed;display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer" onclick="abrirDetModelagem(' + m.id + ')">' +
-        '<div style="flex:1;min-width:140px"><div style="font-weight:700;font-size:0.85rem">' + (m.cliente||'—') + '</div>' +
-        '<div style="font-size:0.72rem;color:var(--muted)">' + (m.tipo==='nova'?'Nova':'Com Alteração') + (m.codSobber?' · '+m.codSobber:'') + ' · ' + (m.vendedora||'') + ' · ' + fmtData(m.criado_em) + '</div></div>' +
-        '<span style="font-size:0.72rem;font-weight:700;padding:2px 9px;border-radius:20px;background:#f3e8ff;color:#6d28d9">' + (m.status||'—') + '</span>' +
-        '</div>'
-      ).join(''));
-    }
+      // Build prefill data from group
+      var lastFrete = g.fretes.slice().sort(function(a,b){return (b.criado_em||'').localeCompare(a.criado_em||'');})[0] || {};
+      var lastCad   = g.cads.slice().sort(function(a,b){return (b.criado_em||'').localeCompare(a.criado_em||'');})[0] || {};
+      var pIdx = _histPrefills.length;
+      _histPrefills.push({
+        nome:        nomeCliente,
+        codigo:      codDisplay || '',
+        tel:         telDisplay || '',
+        cep:         lastFrete.cep || lastCad.cep || '',
+        endereco_cep:lastFrete.endereco_cep || '',
+        rua_cep:     lastFrete.rua_cep || '',
+        bairro_cep:  lastFrete.bairro_cep || '',
+        canLogo:     permitido('solicitar-logo'),
+        canFrete:    permitido('solicitar')
+      });
+
+      html += '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">';
+      html += '<div style="width:48px;height:48px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-user" style="color:#fff;font-size:1.3rem"></i></div>';
+      html += '<div style="flex:1"><div style="font-size:1.05rem;font-weight:800;color:var(--text)">' + nomeCliente + '</div>';
+      if (codDisplay) html += '<div style="font-size:0.8rem;color:var(--muted);margin-top:2px">Código Sobber: <strong>' + codDisplay + '</strong></div>';
+      if (telDisplay) html += '<div style="font-size:0.8rem;color:var(--muted)">WhatsApp: ' + telDisplay + '</div>';
+      html += '</div>';
+      html += '<div style="display:flex;gap:12px;flex-wrap:wrap">';
+      html += '<div style="text-align:center"><div style="font-size:1.3rem;font-weight:800;color:var(--red)">' + g.logos.length + '</div><div style="font-size:0.7rem;color:var(--muted)">Logos</div></div>';
+      html += '<div style="text-align:center"><div style="font-size:1.3rem;font-weight:800;color:#0891b2">' + g.fretes.length + '</div><div style="font-size:0.7rem;color:var(--muted)">Fretes</div></div>';
+      html += '<div style="text-align:center"><div style="font-size:1.3rem;font-weight:800;color:#7c3aed">' + g.mods.length + '</div><div style="font-size:0.7rem;color:var(--muted)">Modelagens</div></div>';
+      html += '</div></div>';
+      // Quick-action buttons
+      html += '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">';
+      if (permitido('solicitar-logo')) html += '<button onclick="_histSolicitarLogo(' + pIdx + ')" style="display:inline-flex;align-items:center;gap:5px;background:#CB0201;color:#fff;border:none;border-radius:7px;padding:6px 13px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit"><i class=\"ti ti-photo\" style=\"font-size:13px\"></i>Solicitar Logo</button>';
+      if (permitido('solicitar'))       html += '<button onclick="_histSolicitarFrete(' + pIdx + ')" style="display:inline-flex;align-items:center;gap:5px;background:#0891b2;color:#fff;border:none;border-radius:7px;padding:6px 13px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit"><i class=\"ti ti-truck\" style=\"font-size:13px\"></i>Solicitar Frete</button>';
+      html += '</div>';
+
+      if (g.cads.length) {
+        html += _histSection('Cadastro', '#6b7280', g.cads.map(function(c) {
+          return '<div style="background:#fff;border-radius:8px;padding:10px 14px;border-left:3px solid #6b7280;font-size:0.82rem;color:var(--text)">' +
+            '<div style="font-weight:700">' + (c.nome_empresa||c.nome_contato||'—') + (c.codigo_cliente?' <span style="color:var(--muted);font-weight:400">· ' + c.codigo_cliente + '</span>':'') + '</div>' +
+            (c.nome_contato&&c.nome_empresa?'<div style="color:var(--muted)">' + c.nome_contato + '</div>':'') +
+            '<div style="color:var(--muted);margin-top:3px">' + [c.telefone,c.email,c.cidade].filter(Boolean).join(' · ') + '</div>' +
+            '</div>';
+        }).join(''));
+      }
+
+      if (g.logos.length) {
+        var logosSorted = g.logos.slice().sort(function(a,b){return (b.criado_em||'').localeCompare(a.criado_em||'');});
+        html += _histSection('Aplicações de Logo', '#CB0201', logosSorted.map(function(a){ return _histLogoCard(a); }).join(''));
+      }
+
+      if (g.fretes.length) {
+        var fresSorted = g.fretes.slice().sort(function(a,b){return ((b.alteracao_em||b.criado_em||'').localeCompare(a.alteracao_em||a.criado_em||''));});
+        html += _histSection('Fretes / Orçamentos', '#0891b2', fresSorted.map(function(f) {
+          var refsInfo = '';
+          if (f.refs_cores && f.refs_cores.length) {
+            refsInfo = f.refs_cores.map(function(rc){ return (rc.ref||'') + (rc.cor?' '+rc.cor:'') + (rc.qtd?' ×'+rc.qtd:''); }).join(' · ');
+          } else if (f.referencias && f.referencias.length) {
+            refsInfo = f.referencias.join(' + ');
+          }
+          var totalPcs = 0;
+          if (f.refs_cores) f.refs_cores.forEach(function(rc){ totalPcs += parseInt(rc.qtd)||0; });
+          var stBg = f.status==='Concluído'?'#d1fae5':f.status==='Cotado'||f.status==='Orçado'?'#fef9c3':'#e0f2fe';
+          var stCl = f.status==='Concluído'?'#065f46':f.status==='Cotado'||f.status==='Orçado'?'#854d0e':'#0369a1';
+          // Volumes
+          var volsHtml = '';
+          if (f.volumes && f.volumes.length) {
+            var volStr = f.volumes.map(function(v){
+              var dim = [v.larg,v.alt,v.comp].filter(Boolean).join('×');
+              return (v.qtd&&v.qtd>1?v.qtd+'cx ':'') + (dim?dim+' cm':'') + (v.peso_cx?' · '+v.peso_cx+' kg/cx':'');
+            }).filter(Boolean).join(' | ');
+            if (volStr) volsHtml = '<div style="font-size:0.72rem;color:#6b7280;margin-top:3px">📦 ' + volStr + '</div>';
+          }
+          // Transportadoras
+          var transpHtml = '';
+          if (f.transportadoras && f.transportadoras.length) {
+            var recIdx = f.recomendacao ? parseInt(f.recomendacao)-1 : -1;
+            transpHtml = '<div style="margin-top:6px;display:flex;flex-direction:column;gap:3px">' +
+              f.transportadoras.map(function(tr,i){
+                if (!tr.nome) return '';
+                var isRec = i === recIdx;
+                return '<div style="font-size:0.72rem;padding:3px 7px;border-radius:6px;background:' + (isRec?'#e0f2fe':'#f8fafc') + ';border:1px solid ' + (isRec?'#7dd3fc':'#e2e8f0') + '">' +
+                  (isRec?'<span style="color:#0369a1;font-weight:700">★ </span>':'') +
+                  '<strong>' + tr.nome + '</strong>' +
+                  (tr.val?' — R$ '+tr.val:'') +
+                  (tr.prazo?' · '+tr.prazo+' dias':'') +
+                  (tr.cotacao?' · nº '+tr.cotacao:'') +
+                  (tr.tipo&&tr.tipo!=='CIF'?' · '+tr.tipo:'') +
+                  '</div>';
+              }).filter(Boolean).join('') +
+              '</div>';
+          }
+          return '<div style="background:#fff;border-radius:8px;padding:10px 14px;margin-bottom:6px;border-left:3px solid #0891b2;cursor:pointer" onclick="abrirModalFrete(' + f.id + ')">' +
+            '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+            '<div style="flex:1;min-width:140px">' +
+            '<div style="font-weight:700;font-size:0.85rem">' + (refsInfo||'—') + '</div>' +
+            (totalPcs>0?'<div style="font-size:0.72rem;color:#0369a1;font-weight:600">' + totalPcs + ' peças</div>':'') +
+            '<div style="font-size:0.72rem;color:var(--muted)">' + (f.vendedora||'') + ' · ' + fmtData(f.criado_em) + '</div>' +
+            '</div>' +
+            '<span style="font-size:0.72rem;font-weight:700;padding:2px 9px;border-radius:20px;background:' + stBg + ';color:' + stCl + '">' + (f.status||'—') + '</span>' +
+            '</div>' +
+            volsHtml +
+            transpHtml +
+            (f.resumo_sobber_total!=null?'<div style="font-size:0.78rem;color:#0369a1;font-weight:700;margin-top:4px">Total: R$ ' + Number(f.resumo_sobber_total).toLocaleString('pt-BR',{minimumFractionDigits:2}) + '</div>':'') +
+            '</div>';
+        }).join(''));
+      }
+
+      if (g.mods.length) {
+        var modsSorted = g.mods.slice().sort(function(a,b){return ((b.atualizado_em||b.criado_em||'').localeCompare(a.atualizado_em||a.criado_em||''));});
+        html += _histSection('Modelagens', '#7c3aed', modsSorted.map(function(m) {
+          return '<div style="background:#fff;border-radius:8px;padding:10px 14px;margin-bottom:6px;border-left:3px solid #7c3aed;display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer" onclick="abrirDetModelagem(' + m.id + ')">' +
+            '<div style="flex:1;min-width:140px"><div style="font-weight:700;font-size:0.85rem">' + (m.cliente||'—') + '</div>' +
+            '<div style="font-size:0.72rem;color:var(--muted)">' + (m.tipo==='nova'?'Nova':'Com Alteração') + (m.codSobber?' · '+m.codSobber:'') + ' · ' + (m.vendedora||'') + ' · ' + fmtData(m.criado_em) + '</div></div>' +
+            '<span style="font-size:0.72rem;font-weight:700;padding:2px 9px;border-radius:20px;background:#f3e8ff;color:#6d28d9">' + (m.status||'—') + '</span>' +
+            '</div>';
+        }).join(''));
+      }
+
+      if (keys.length > 1) html += '</div>';
+    });
 
     wrap.innerHTML = html;
+  }
+
+  function _histSolicitarLogo(idx) {
+    var p = _histPrefills[idx]; if (!p) { ir('solicitar-logo'); return; }
+    ir('solicitar-logo');
+    setTimeout(function() {
+      var el;
+      el = document.getElementById('lg-cliente');    if(el){ el.value = (p.nome||'').toUpperCase(); }
+      el = document.getElementById('lg-codigo-cli'); if(el){ el.value = p.codigo||''; }
+      el = document.getElementById('lg-tel');        if(el){ el.value = p.tel||''; }
+      tentarAutoFillClienteLogo();
+    }, 150);
+  }
+
+  function _histSolicitarFrete(idx) {
+    var p = _histPrefills[idx]; if (!p) { ir('solicitar'); return; }
+    ir('solicitar');
+    setTimeout(function() {
+      var el;
+      el = document.getElementById('f-cliente');    if(el){ el.value = (p.nome||'').toUpperCase(); }
+      el = document.getElementById('f-codigo-cli'); if(el){ el.value = p.codigo||''; }
+      el = document.getElementById('f-tel');        if(el){ el.value = p.tel||''; }
+      if (p.cep) {
+        el = document.getElementById('f-cep'); if(el){ el.value = p.cep; maskCEP(el); }
+        if (p.rua_cep)      { el = document.getElementById('f-rua-cep');    if(el) el.value = p.rua_cep; }
+        if (p.bairro_cep)   { el = document.getElementById('f-bairro-cep'); if(el) el.value = p.bairro_cep; }
+        if (p.endereco_cep) { el = document.getElementById('f-end-cep');    if(el) el.value = p.endereco_cep; }
+      }
+      tentarAutoFillCliente();
+    }, 150);
+  }
+
+  function _histSolicitarLogo(idx) {
+    var p = _histPrefills[idx]; if (!p) { ir('solicitar-logo'); return; }
+    ir('solicitar-logo');
+    setTimeout(function() {
+      var el;
+      el = document.getElementById('lg-cliente');    if(el){ el.value = (p.nome||'').toUpperCase(); }
+      el = document.getElementById('lg-codigo-cli'); if(el){ el.value = p.codigo||''; }
+      el = document.getElementById('lg-tel');        if(el){ el.value = p.tel||''; }
+      tentarAutoFillClienteLogo();
+    }, 150);
+  }
+
+  function _histSolicitarFrete(idx) {
+    var p = _histPrefills[idx]; if (!p) { ir('solicitar'); return; }
+    ir('solicitar');
+    setTimeout(function() {
+      var el;
+      el = document.getElementById('f-cliente');    if(el){ el.value = (p.nome||'').toUpperCase(); }
+      el = document.getElementById('f-codigo-cli'); if(el){ el.value = p.codigo||''; }
+      el = document.getElementById('f-tel');        if(el){ el.value = p.tel||''; }
+      if (p.cep) {
+        el = document.getElementById('f-cep'); if(el){ el.value = p.cep; maskCEP(el); }
+        if (p.rua_cep)      { el = document.getElementById('f-rua-cep');    if(el) el.value = p.rua_cep; }
+        if (p.bairro_cep)   { el = document.getElementById('f-bairro-cep'); if(el) el.value = p.bairro_cep; }
+        if (p.endereco_cep) { el = document.getElementById('f-end-cep');    if(el) el.value = p.endereco_cep; }
+      }
+      tentarAutoFillCliente();
+    }, 150);
   }
 
   function _histSection(titulo, cor, bodyHtml) {
@@ -3913,7 +4071,7 @@ Instagram: mariasilva"></textarea>
       refs_cores_producao:  JSON.parse(JSON.stringify(refsSel)),
       arquivos_logo: JSON.parse(JSON.stringify(a.arquivos_logo||[])),
       logo_bordado:  a.logo_bordado ? JSON.parse(JSON.stringify(a.logo_bordado)) : null,
-      mockups: JSON.parse(JSON.stringify(a.mockups||[])),
+      mockups: JSON.parse(JSON.stringify((a.mockups||[]).filter(function(m){ return refsSel.some(function(rc){ return rc.ref === m.ref; }); }))),
       status: 'producao',
       anexado_clickup: false,
       criado_em: new Date().toISOString(),
@@ -7301,7 +7459,13 @@ Instagram: mariasilva"></textarea>
     atualizarMetricasFrete();
     const tbody = document.getElementById('tbody-frete');
     if (!tbody) return;
-    const dados = frtFilaFiltro === 'concluidos' ? fretes.filter(f=>f.status==='Concluído') : fretes.filter(f=>f.status!=='Concluído');
+    const _frtBase = frtFilaFiltro === 'concluidos' ? fretes.filter(f=>f.status==='Concluído') : fretes.filter(f=>f.status!=='Concluído');
+    const dados = frtBusca ? _frtBase.filter(f =>
+      (f.cliente_nome||'').toLowerCase().includes(frtBusca) ||
+      (String(f.cliente_codigo||'')).toLowerCase().includes(frtBusca) ||
+      (f.cep||'').replace(/\D/g,'').includes(frtBusca.replace(/\D/g,'')) ||
+      (f.endereco_cep||'').toLowerCase().includes(frtBusca)
+    ) : _frtBase;
     if (!dados.length) { tbody.innerHTML = `<tr class="empty-row"><td colspan="11">📭 Nenhuma solicitação.</td></tr>`; return; }
     const editar = podeEditar();
     tbody.innerHTML = dados.map(f => {
@@ -7347,6 +7511,7 @@ Instagram: mariasilva"></textarea>
 
   // Fretes — filtro Pendentes/Concluídos da fila do Painel (mesma lógica da Aplicação de Logo)
   let frtFilaFiltro = 'pendentes';
+  let frtBusca = '';
   function setFrtFilaFiltro(f) {
     frtFilaFiltro = f;
     document.querySelectorAll('#filtro-frt-fila-pills .filtro-pill').forEach((el,i) => el.classList.toggle('active', (i===0)===(f==='pendentes')));
