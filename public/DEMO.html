@@ -3824,8 +3824,8 @@ Instagram: mariasilva"></textarea>
       html += '</div></div>';
       // Quick-action buttons
       html += '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">';
-      if (permitido('solicitar-logo')) html += '<button onclick="_histSolicitarLogo(' + pIdx + ')" style="display:inline-flex;align-items:center;gap:5px;background:#CB0201;color:#fff;border:none;border-radius:7px;padding:6px 13px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit"><i class=\"ti ti-photo\" style=\"font-size:13px\"></i>Solicitar Logo</button>';
-      if (permitido('solicitar'))       html += '<button onclick="_histSolicitarFrete(' + pIdx + ')" style="display:inline-flex;align-items:center;gap:5px;background:#0891b2;color:#fff;border:none;border-radius:7px;padding:6px 13px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit"><i class=\"ti ti-truck\" style=\"font-size:13px\"></i>Solicitar Frete</button>';
+      if (permitidos.includes('solicitar-logo')) html += '<button onclick="_histSolicitarLogo(' + pIdx + ')" style="display:inline-flex;align-items:center;gap:5px;background:#CB0201;color:#fff;border:none;border-radius:7px;padding:6px 13px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit"><i class=\"ti ti-photo\" style=\"font-size:13px\"></i>Solicitar Logo</button>';
+      if (permitidos.includes('solicitar'))       html += '<button onclick="_histSolicitarFrete(' + pIdx + ')" style="display:inline-flex;align-items:center;gap:5px;background:#0891b2;color:#fff;border:none;border-radius:7px;padding:6px 13px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit"><i class=\"ti ti-truck\" style=\"font-size:13px\"></i>Solicitar Frete</button>';
       html += '</div>';
 
       if (g.cads.length) {
@@ -7511,7 +7511,7 @@ Instagram: mariasilva"></textarea>
 
   // Fretes — filtro Pendentes/Concluídos da fila do Painel (mesma lógica da Aplicação de Logo)
   let frtFilaFiltro = 'pendentes';
-  let frtBusca = '';
+  var frtBusca = '';
   function setFrtFilaFiltro(f) {
     frtFilaFiltro = f;
     document.querySelectorAll('#filtro-frt-fila-pills .filtro-pill').forEach((el,i) => el.classList.toggle('active', (i===0)===(f==='pendentes')));
