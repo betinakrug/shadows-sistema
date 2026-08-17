@@ -9117,7 +9117,11 @@ Instagram: mariasilva"></textarea>
     ];
 
     board.innerHTML = COLS.map(col => {
-      const itens = base.filter(a => col.statuses.includes(a.status||''));
+      const itens = base.filter(a => col.statuses.includes(a.status||'')).sort((a,b) => {
+        const da = new Date(a.enviado_em || a.atualizado_em || a.criado_em || 0);
+        const db = new Date(b.enviado_em || b.atualizado_em || b.criado_em || 0);
+        return db - da;
+      });
       const cards = itens.map(a => {
         const mockup     = (a.mockups||[]).filter(m => m.dataUrl).slice(-1)[0];
         const arteCliente = (a.arquivos_logo||[]).find(x => x.previewUrl || (x.tipo && (x.tipo.startsWith('image/') || x.tipo==='application/pdf') && x.dataUrl));
