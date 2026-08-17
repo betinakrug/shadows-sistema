@@ -11143,7 +11143,7 @@ Instagram: mariasilva"></textarea>
         '<div style="font-size:0.8rem;font-weight:600;color:#0891b2">' + (a.cliente_nome||'—') + (a.cliente_codigo?' <span style="color:#94a3b8;font-weight:400">· '+a.cliente_codigo+'</span>':'') + '</div>' +
         '<div style="font-size:0.72rem;color:#64748b">' + refs + '</div>' +
         '<div style="margin-top:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
-          (telLimpo ? '<span style="display:inline-flex;align-items:center;gap:4px"><span style="font-size:0.75rem;font-weight:700;color:#1e293b">📱 '+telFmt+'</span><button type=\"button\" onclick=\"event.stopPropagation();navigator.clipboard.writeText(''+telLimpo+'').then(function(){var b=this;}).catch(function(){});var _b=event.currentTarget;_b.textContent='✅';setTimeout(function(){_b.textContent='📋 Copiar';},1500)\" style=\"border:1px solid #e2e8f0;background:#f8fafc;color:#64748b;border-radius:5px;padding:1px 7px;font-size:0.68rem;cursor:pointer;font-family:inherit\">📋 Copiar</button></span>' : '<span style=\"font-size:0.72rem;color:#94a3b8\">Sem telefone</span>') +
+          (telLimpo ? '<span style="display:inline-flex;align-items:center;gap:4px"><span style="font-size:0.75rem;font-weight:700;color:#1e293b">📱 '+telFmt+'</span><button type="button" data-copiar-tel="'+telLimpo+'" style="border:1px solid #e2e8f0;background:#f8fafc;color:#64748b;border-radius:5px;padding:1px 7px;font-size:0.68rem;cursor:pointer;font-family:inherit">📋 Copiar</button></span>' : '<span style="font-size:0.72rem;color:#94a3b8">Sem telefone</span>') +
           (tent>0 ? '<span style="font-size:0.68rem;color:#f59e0b;background:#fef3c7;border-radius:4px;padding:1px 5px">'+tent+'/4 tentativas</span>' : '') +
           (a.vendedora ? '<span style="font-size:0.68rem;color:#94a3b8">'+a.vendedora+'</span>' : '') +
         '</div>';
@@ -11256,6 +11256,17 @@ Instagram: mariasilva"></textarea>
     if (vencidos.length)  list.appendChild(secao('Contatar agora', '#dc2626', vencidos, 'vencido'));
     if (agendados.length) list.appendChild(secao('Agendados', '#b45309', agendados, 'agendado'));
     if (semResp.length)   list.appendChild(secao('Sem resposta', '#64748b', semResp, 'semresp'));
+
+    // delegação para botões "Copiar telefone"
+    list.querySelectorAll('button[data-copiar-tel]').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var tel = btn.getAttribute('data-copiar-tel');
+        navigator.clipboard.writeText(tel).catch(function(){});
+        btn.textContent = '✅ Copiado!';
+        setTimeout(function(){ btn.textContent = '📋 Copiar'; }, 1500);
+      });
+    });
   }
 
   function tentarContatoWhatsapp(id, tentAtual, tel, nomeCompleto) {
