@@ -9112,7 +9112,7 @@ Instagram: mariasilva"></textarea>
     const COLS = [
       { key:'aguardando', label:'Aguardando',  statuses:['','reprovado','duvida'], color:'#f5f5f5', head:'#374151', dot:'#94a3b8' },
       { key:'pronto',     label:'Pronto',       statuses:['pronto'],       color:'#f5f5f5', head:'#374151', dot:'#f59e0b' },
-      { key:'enviado',    label:'Enviado',      statuses:['enviado','pensando'],                      color:'#f5f5f5', head:'#374151', dot:'#3b82f6' },
+      { key:'enviado',    label:'Enviado',      statuses:['enviado'],                                 color:'#f5f5f5', head:'#374151', dot:'#3b82f6' },
       { key:'aprovado',   label:'Aprovado',     statuses:['aprovado'],             color:'#f5f5f5', head:'#374151', dot:'#16a34a' },
     ];
 
@@ -11091,121 +11091,141 @@ Instagram: mariasilva"></textarea>
       var tent = a.tentativas_contato || 0;
       var diff = proximoPrazo(a);
       var mockup = (a.mockups||[]).filter(m => m.dataUrl).slice(-1)[0];
-      var div = document.createElement('div');
-      div.style.cssText = 'background:#fff;border-radius:10px;padding:14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.07);display:flex;gap:12px;align-items:flex-start';
+      var telLimpo = (a.cliente_tel||'').replace(/\D/g,'');
+      var telFmt = telLimpo.length===11 ? '('+telLimpo.slice(0,2)+') '+telLimpo.slice(2,7)+'-'+telLimpo.slice(7) : (a.cliente_tel||'—');
+      var waUrl = telLimpo ? 'https://wa.me/55'+telLimpo : null;
+      var refs = (function(){ var _r=a.referencias||[]; var _rc=a.refs_cores||[]; return _rc.length===_r.length ? _r.map(function(r,i){ return r+(_rc[i]&&_rc[i].cor?' '+_rc[i].cor:''); }).join(' · ') : (_r.join(' · ')||'—')+(a.cor_mala?' · '+a.cor_mala:''); })();
 
-      // thumb mockup
+      // badge de urgência
+      var badgeHtml = '';
+      if (sectionType==='vencido') {
+        var horasAtras = Math.round(Math.abs(diff));
+        badgeHtml = '<span style="font-size:0.62rem;font-weight:700;color:#dc2626;background:#fee2e2;border-radius:4px;padding:2px 7px;white-space:nowrap">⚠️ Contatar agora' + (horasAtras>0?' · '+( horasAtras<24?horasAtras+'h':Math.round(horasAtras/24)+'d'):'') + '</span>';
+      } else if (sectionType==='agendado') {
+        var horas = Math.round(diff);
+        badgeHtml = '<span style="font-size:0.62rem;color:#b45309;background:#fef3c7;border-radius:4px;padding:2px 7px;white-space:nowrap">📅 Contatar em '+(horas<24?horas+'h':Math.round(horas/24)+'d')+'</span>';
+      } else {
+        badgeHtml = '<span style="font-size:0.62rem;color:#64748b;background:#f1f5f9;border-radius:4px;padding:2px 7px">📵 Sem resposta</span>';
+      }
+
+      var div = document.createElement('div');
+      div.style.cssText = 'background:#fff;border-radius:12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.08);overflow:hidden;cursor:pointer'+(sectionType==='vencido'?';border-left:4px solid #dc2626':sectionType==='agendado'?';border-left:4px solid #f59e0b':';border-left:4px solid #94a3b8');
+      div.addEventListener('click', function(e){
+        if (!e.target.closest('button,a,input,select,textarea')) abrirModalHistorico(a.id);
+      });
+
+      // — TOPO: mockup + info principal —
+      var top = document.createElement('div');
+      top.style.cssText = 'display:flex;gap:12px;padding:12px 14px 10px';
+
+      // mockup
       var thumb = document.createElement('div');
-      thumb.style.cssText = 'flex-shrink:0;width:52px;height:52px;border-radius:8px;overflow:hidden;background:#f1f5f9;display:flex;align-items:center;justify-content:center';
+      thumb.style.cssText = 'flex-shrink:0;width:72px;height:72px;border-radius:9px;overflow:hidden;background:#f1f5f9;display:flex;align-items:center;justify-content:center;border:1px solid #e2e8f0';
       if (mockup) {
         var img = document.createElement('img');
-        img.src = mockup.dataUrl; img.style.cssText = 'width:100%;height:100%;object-fit:cover;cursor:zoom-in';
-        img.onclick = function(){ abrirImgLightbox(mockup.dataUrl); };
+        img.src = mockup.dataUrl||mockup.previewUrl;
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;cursor:zoom-in';
+        img.onclick = function(e){ e.stopPropagation(); abrirImgLightbox(mockup.dataUrl||mockup.previewUrl); };
         thumb.appendChild(img);
       } else {
-        thumb.innerHTML = '<span style="font-size:1.4rem">👜</span>';
+        thumb.innerHTML = '<span style="font-size:2rem">👜</span>';
       }
-      div.appendChild(thumb);
+      top.appendChild(thumb);
 
       // info
       var info = document.createElement('div');
-      info.style.cssText = 'flex:1;min-width:0';
-      var nomeFirst = (a.cliente_nome||'').split(' ')[0];
-      var primeiro  = nomeFirst.charAt(0).toUpperCase() + nomeFirst.slice(1).toLowerCase();
+      info.style.cssText = 'flex:1;min-width:0;display:flex;flex-direction:column;gap:2px';
       info.innerHTML =
-        '<div style="font-weight:700;font-size:0.88rem;color:#1e293b">' + (a.logomarca||'—') + '</div>' +
-        '<div style="font-size:0.75rem;color:#0891b2;font-weight:600">' + a.cliente_nome + (a.cliente_codigo?' <span style="color:#94a3b8">· '+a.cliente_codigo+'</span>':'') + '</div>' +
-        '<div style="font-size:0.7rem;color:#64748b;margin:2px 0">' + (function(){ var _r=a.referencias||[]; var _rc=a.refs_cores||[]; return _rc.length===_r.length ? _r.map(function(r,i){ return r+(_rc[i]&&_rc[i].cor?' '+_rc[i].cor:''); }).join(' + ') : (_r.join(' + ')||'—')+(a.cor_mala?' · '+a.cor_mala:''); })() + '</div>' +
-        (tent > 0 ? '<div style="font-size:0.68rem;color:#f59e0b;margin:2px 0">📞 '+tent+'/4 enviados</div>' : '');
-      div.appendChild(info);
+        '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
+          '<span style="font-weight:800;font-size:0.9rem;color:#1e293b">' + (a.logomarca||'—') + '</span>' +
+          badgeHtml +
+        '</div>' +
+        '<div style="font-size:0.8rem;font-weight:600;color:#0891b2">' + (a.cliente_nome||'—') + (a.cliente_codigo?' <span style="color:#94a3b8;font-weight:400">· '+a.cliente_codigo+'</span>':'') + '</div>' +
+        '<div style="font-size:0.72rem;color:#64748b">' + refs + '</div>' +
+        '<div style="margin-top:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+          (waUrl ? '<a href="'+waUrl+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:0.75rem;font-weight:700;color:#059669;text-decoration:none;display:flex;align-items:center;gap:3px"><span style="font-size:1rem">📱</span>'+telFmt+'</a>' : '<span style="font-size:0.72rem;color:#94a3b8">Sem telefone</span>') +
+          (tent>0 ? '<span style="font-size:0.68rem;color:#f59e0b;background:#fef3c7;border-radius:4px;padding:1px 5px">'+tent+'/4 tentativas</span>' : '') +
+          (a.vendedora ? '<span style="font-size:0.68rem;color:#94a3b8">'+a.vendedora+'</span>' : '') +
+        '</div>';
+      top.appendChild(info);
 
-      // prazo + botões
-      var acts = document.createElement('div');
-      acts.style.cssText = 'display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0';
-
-      if (sectionType === 'vencido') {
-        var badge = document.createElement('div');
-        var horasAtras = Math.round(Math.abs(diff));
-        badge.style.cssText = 'font-size:0.65rem;font-weight:700;color:#dc2626;background:#fee2e2;border-radius:4px;padding:2px 7px';
-        badge.textContent = '⚠️ Vencido há ' + (horasAtras < 24 ? horasAtras+'h' : Math.round(horasAtras/24)+'d');
-        acts.appendChild(badge);
-      } else if (sectionType === 'agendado') {
-        var badge2 = document.createElement('div');
-        var horas = Math.round(diff);
-        badge2.style.cssText = 'font-size:0.65rem;color:#64748b;background:#f1f5f9;border-radius:4px;padding:2px 7px';
-        badge2.textContent = '📅 em ' + (horas < 24 ? horas+'h' : Math.round(horas/24)+'d');
-        acts.appendChild(badge2);
+      // botão excluir (canto direito)
+      if (podeExcluir()) {
+        var _id4 = a.id;
+        var btnDel = document.createElement('button');
+        btnDel.type='button'; btnDel.textContent='🗑️';
+        btnDel.style.cssText='border:none;background:none;cursor:pointer;font-size:0.78rem;color:#cbd5e1;padding:0;flex-shrink:0;align-self:flex-start';
+        btnDel.title='Excluir';
+        btnDel.addEventListener('click', function(e){ e.stopPropagation(); excluirAplicacaoLogo(_id4); });
+        top.appendChild(btnDel);
       }
 
-      // botão WhatsApp
+      div.appendChild(top);
+
+      // — RODAPÉ: botões de ação —
+      var footer = document.createElement('div');
+      footer.style.cssText = 'display:flex;gap:6px;padding:0 14px 12px;flex-wrap:wrap';
+
+      // botão WhatsApp (enviar tentativa)
       if (a.status === 'pensando' && tent < 4) {
         var _id = a.id, _tent = tent, _tel = a.cliente_tel||'', _nome = a.cliente_nome||'';
         var btnWa = document.createElement('button');
         btnWa.type = 'button';
-        var isVencido = sectionType === 'vencido';
-        btnWa.style.cssText = 'padding:6px 10px;font-size:0.72rem;font-weight:700;border:none;border-radius:8px;cursor:pointer;background:#25d366;color:#fff';
-        btnWa.textContent = '📲 Enviar ('+(tent+1)+'/4)';
-        btnWa.addEventListener('click', function(){ tentarContatoWhatsapp(_id, _tent, _tel, _nome); });
-        acts.appendChild(btnWa);
+        btnWa.style.cssText = 'flex:1;min-width:120px;padding:8px 10px;font-size:0.78rem;font-weight:700;border:none;border-radius:8px;cursor:pointer;background:#25d366;color:#fff;display:flex;align-items:center;justify-content:center;gap:5px';
+        btnWa.innerHTML = '📲 Enviar mensagem <span style="background:rgba(0,0,0,.15);border-radius:4px;padding:1px 5px;font-size:0.68rem">'+(tent+1)+'/4</span>';
+        btnWa.addEventListener('click', function(e){ e.stopPropagation(); tentarContatoWhatsapp(_id, _tent, _tel, _nome); });
+        footer.appendChild(btnWa);
+      }
+
+      // botão retomou (sem_resposta)
+      if (a.status === 'sem_resposta') {
+        var _id3 = a.id;
+        var btnRet = document.createElement('button');
+        btnRet.type = 'button';
+        btnRet.style.cssText = 'flex:1;min-width:100px;padding:8px 10px;font-size:0.78rem;font-weight:600;border:none;border-radius:8px;cursor:pointer;background:#0891b2;color:#fff';
+        btnRet.textContent = '📲 Retomou contato';
+        btnRet.addEventListener('click', function(e){ e.stopPropagation(); retomarContatoLogo(_id3); });
+        footer.appendChild(btnRet);
       }
 
       // botão aprovou
       var _id2 = a.id;
       var btnAp = document.createElement('button');
       btnAp.type = 'button';
-      btnAp.style.cssText = 'padding:5px 8px;font-size:0.7rem;border:1px solid #059669;background:#f0fdf4;color:#065f46;border-radius:7px;cursor:pointer';
+      btnAp.style.cssText = 'padding:8px 12px;font-size:0.78rem;font-weight:600;border:2px solid #059669;background:#f0fdf4;color:#065f46;border-radius:8px;cursor:pointer';
       btnAp.textContent = '✅ Aprovou';
-      btnAp.addEventListener('click', function(){ marcarLogoAprovado(_id2); });
-      acts.appendChild(btnAp);
+      btnAp.addEventListener('click', function(e){ e.stopPropagation(); marcarLogoAprovado(_id2); });
+      footer.appendChild(btnAp);
 
-      if (a.status === 'sem_resposta') {
-        var _id3 = a.id;
-        var btnRet = document.createElement('button');
-        btnRet.type = 'button';
-        btnRet.style.cssText = 'padding:5px 8px;font-size:0.7rem;border:1px solid #0891b2;background:#eff6ff;color:#1e40af;border-radius:7px;cursor:pointer';
-        btnRet.textContent = '📲 Retomou';
-        btnRet.addEventListener('click', function(){ retomarContatoLogo(_id3); });
-        acts.appendChild(btnRet);
-      }
-
-      // botão cliente pediu ajuste (expandível)
+      // botão pediu ajuste (expandível)
       var _idAj = a.id;
       var triggerAj = document.createElement('button');
-      triggerAj.type='button'; triggerAj.textContent='↩ Cliente pediu ajuste';
-      triggerAj.style.cssText='padding:5px 8px;font-size:0.7rem;border:1px solid #dc2626;background:#fef2f2;color:#991b1b;border-radius:7px;cursor:pointer;font-weight:600;text-align:right';
+      triggerAj.type='button'; triggerAj.textContent='↩ Pediu ajuste';
+      triggerAj.style.cssText='padding:8px 12px;font-size:0.78rem;font-weight:600;border:2px solid #dc2626;background:#fef2f2;color:#991b1b;border-radius:8px;cursor:pointer';
+      footer.appendChild(triggerAj);
+
+      div.appendChild(footer);
+
+      // form ajuste (expansível, abaixo do footer)
       var formAj = document.createElement('div');
-      formAj.style.cssText='display:none;margin-top:4px;text-align:left';
+      formAj.style.cssText='display:none;padding:0 14px 12px';
       var txtAj = document.createElement('textarea');
-      txtAj.placeholder='Descreve o ajuste...';
-      txtAj.style.cssText='width:160px;font-size:0.7rem;border:1px solid #fca5a5;border-radius:6px;padding:4px;resize:vertical;min-height:40px;box-sizing:border-box;margin-bottom:3px';
+      txtAj.placeholder='Descreve o ajuste solicitado...';
+      txtAj.style.cssText='width:100%;font-size:0.78rem;border:1.5px solid #fca5a5;border-radius:8px;padding:8px;resize:vertical;min-height:60px;box-sizing:border-box;margin-bottom:6px;font-family:inherit';
+      var rowConf = document.createElement('div');
+      rowConf.style.cssText='display:flex;gap:6px';
       var confAj = document.createElement('button');
-      confAj.type='button'; confAj.textContent='✔ Confirmar';
-      confAj.style.cssText='padding:4px 8px;font-size:0.7rem;border:none;background:#dc2626;color:#fff;border-radius:6px;cursor:pointer;font-weight:600;margin-right:3px';
+      confAj.type='button'; confAj.textContent='✔ Confirmar ajuste';
+      confAj.style.cssText='flex:1;padding:7px;font-size:0.78rem;border:none;background:#dc2626;color:#fff;border-radius:8px;cursor:pointer;font-weight:700';
       var cancAj = document.createElement('button');
       cancAj.type='button'; cancAj.textContent='Cancelar';
-      cancAj.style.cssText='padding:4px 8px;font-size:0.7rem;border:1px solid #e5e5e5;background:#f9fafb;color:#374151;border-radius:6px;cursor:pointer';
-      triggerAj.addEventListener('click', function(){ formAj.style.display='block'; triggerAj.style.display='none'; txtAj.focus(); });
-      cancAj.addEventListener('click', function(){ formAj.style.display='none'; triggerAj.style.display=''; txtAj.value=''; });
-      confAj.addEventListener('click', function(){ if(!txtAj.value.trim()){txtAj.style.border='1.5px solid #dc2626';txtAj.focus();mostrarToast('⚠️ Descreva o ajuste.');return;} marcarLogoReprovado(_idAj, txtAj.value); renderAcompanharLogo(); });
-      formAj.appendChild(txtAj); formAj.appendChild(confAj); formAj.appendChild(cancAj);
-      acts.appendChild(triggerAj); acts.appendChild(formAj);
-
-      if (podeExcluir()) {
-        var _id4 = a.id;
-        var btnDel = document.createElement('button');
-        btnDel.type='button'; btnDel.textContent='🗑️';
-        btnDel.style.cssText='border:none;background:none;cursor:pointer;font-size:0.75rem;color:#aaa;padding:0';
-        btnDel.addEventListener('click', function(){ excluirAplicacaoLogo(_id4); });
-        acts.appendChild(btnDel);
-      }
-
-      div.appendChild(acts);
-
-      // Click on card body (not buttons) opens history modal
-      div.style.cursor = 'pointer';
-      div.addEventListener('click', function(e){
-        if (!e.target.closest('button,a,img,input,select,textarea,label')) abrirModalHistorico(a.id);
-      });
+      cancAj.style.cssText='padding:7px 14px;font-size:0.78rem;border:1px solid #e5e5e5;background:#f9fafb;color:#374151;border-radius:8px;cursor:pointer';
+      triggerAj.addEventListener('click', function(e){ e.stopPropagation(); formAj.style.display='block'; triggerAj.style.display='none'; txtAj.focus(); });
+      cancAj.addEventListener('click', function(e){ e.stopPropagation(); formAj.style.display='none'; triggerAj.style.display=''; txtAj.value=''; });
+      confAj.addEventListener('click', function(e){ e.stopPropagation(); if(!txtAj.value.trim()){txtAj.style.border='1.5px solid #dc2626';txtAj.focus();mostrarToast('⚠️ Descreva o ajuste.');return;} marcarLogoReprovado(_idAj, txtAj.value); renderAcompanharLogo(); });
+      rowConf.appendChild(confAj); rowConf.appendChild(cancAj);
+      formAj.appendChild(txtAj); formAj.appendChild(rowConf);
+      div.appendChild(formAj);
 
       return div;
     }
