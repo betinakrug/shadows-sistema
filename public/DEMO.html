@@ -11061,7 +11061,7 @@ Instagram: mariasilva"></textarea>
     const busca = _aRaw.toLowerCase().replace(/\D/g, '') || _aRaw.toLowerCase();
     const buscaRaw = _aRaw.toLowerCase();
     var base = aplicacoesLogo.filter(a => {
-      if (a.status !== 'pensando' && a.status !== 'sem_resposta') return false;
+      if (a.status !== 'pensando' && a.status !== 'sem_resposta' && a.status !== 'nao_fechou') return false;
       if (filtro !== 'todas' && a.vendedora !== filtro) return false;
       if (!buscaRaw) return true;
       const telLimpo = (a.cliente_tel||'').replace(/\D/g,'');
@@ -11073,6 +11073,9 @@ Instagram: mariasilva"></textarea>
 
     // calcular próximo prazo para cada item
     function proximoPrazo(a) {
+      if (a.retorno_em) {
+        return (new Date(a.retorno_em) - now) / 3600000; // negativo = vencido, positivo = agendado
+      }
       var tent = a.tentativas_contato || 0;
       if (tent >= 4 || !a.enviado_em) return Infinity;
       var nextH = THRESHOLDS[tent];
@@ -11083,9 +11086,11 @@ Instagram: mariasilva"></textarea>
     var vencidos   = base.filter(a => a.status === 'pensando' && proximoPrazo(a) <= 0);
     var agendados  = base.filter(a => a.status === 'pensando' && proximoPrazo(a) > 0);
     var semResp    = base.filter(a => a.status === 'sem_resposta');
+    var naoFech    = base.filter(a => a.status === 'nao_fechou');
 
     vencidos.sort((a,b) => proximoPrazo(a) - proximoPrazo(b));
     agendados.sort((a,b) => proximoPrazo(a) - proximoPrazo(b));
+    naoFech.sort((a,b) => new Date(b.nao_fechou_em||0) - new Date(a.nao_fechou_em||0));
 
     function cardAcomp(a, sectionType) {
       var tent = a.tentativas_contato || 0;
@@ -11103,7 +11108,10 @@ Instagram: mariasilva"></textarea>
         badgeHtml = '<span style="font-size:0.62rem;font-weight:700;color:#dc2626;background:#fee2e2;border-radius:4px;padding:2px 7px;white-space:nowrap">⚠️ Contatar agora' + (horasAtras>0?' · '+( horasAtras<24?horasAtras+'h':Math.round(horasAtras/24)+'d'):'') + '</span>';
       } else if (sectionType==='agendado') {
         var horas = Math.round(diff);
-        badgeHtml = '<span style="font-size:0.62rem;color:#b45309;background:#fef3c7;border-radius:4px;padding:2px 7px;white-space:nowrap">📅 Contatar em '+(horas<24?horas+'h':Math.round(horas/24)+'d')+'</span>';
+        var badgeTxt = a.retorno_em
+          ? '📅 Retornar em ' + new Date(a.retorno_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})
+          : '📅 Contatar em '+(horas<24?horas+'h':Math.round(horas/24)+'d');
+        badgeHtml = '<span style="font-size:0.62rem;color:#b45309;background:#fef3c7;border-radius:4px;padding:2px 7px;white-space:nowrap">'+badgeTxt+'</span>';
       } else {
         badgeHtml = '<span style="font-size:0.62rem;color:#64748b;background:#f1f5f9;border-radius:4px;padding:2px 7px">📵 Sem resposta</span>';
       }
@@ -11142,6 +11150,8 @@ Instagram: mariasilva"></textarea>
         '</div>' +
         '<div style="font-size:0.8rem;font-weight:600;color:#0891b2">' + (a.cliente_nome||'—') + (a.cliente_codigo?' <span style="color:#94a3b8;font-weight:400">· '+a.cliente_codigo+'</span>':'') + '</div>' +
         '<div style="font-size:0.72rem;color:#64748b">' + refs + '</div>' +
+        (a.retorno_obs ? '<div style="font-size:0.72rem;color:#b45309;background:#fef3c7;border-radius:5px;padding:3px 7px;margin-top:3px">💬 '+a.retorno_obs+'</div>' : '') +
+        (a.nao_fechou_motivo ? '<div style="font-size:0.72rem;color:#dc2626;background:#fef2f2;border-radius:5px;padding:3px 7px;margin-top:3px">❌ '+a.nao_fechou_motivo+'</div>' : '') +
         '<div style="margin-top:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
           (telLimpo ? '<span style="display:inline-flex;align-items:center;gap:4px"><span style="font-size:0.75rem;font-weight:700;color:#1e293b">📱 '+telFmt+'</span><button type="button" data-copiar-tel="'+telLimpo+'" style="border:1px solid #e2e8f0;background:#f8fafc;color:#64748b;border-radius:5px;padding:1px 7px;font-size:0.68rem;cursor:pointer;font-family:inherit">📋 Copiar</button></span>' : '<span style="font-size:0.72rem;color:#94a3b8">Sem telefone</span>') +
           (tent>0 ? '<span style="font-size:0.68rem;color:#f59e0b;background:#fef3c7;border-radius:4px;padding:1px 5px">'+tent+'/4 tentativas</span>' : '') +
@@ -11197,12 +11207,82 @@ Instagram: mariasilva"></textarea>
       btnAp.addEventListener('click', function(e){ e.stopPropagation(); marcarLogoAprovado(_id2); });
       footer.appendChild(btnAp);
 
-      // botão pediu ajuste (expandível)
+      // botão pediu ajuste (expansível)
       var _idAj = a.id;
       var triggerAj = document.createElement('button');
       triggerAj.type='button'; triggerAj.textContent='↩ Pediu ajuste';
       triggerAj.style.cssText='padding:8px 12px;font-size:0.78rem;font-weight:600;border:2px solid #dc2626;background:#fef2f2;color:#991b1b;border-radius:8px;cursor:pointer';
       footer.appendChild(triggerAj);
+
+      // botão não fechou (só quando ainda em acompanhamento ativo)
+      if (a.status !== 'nao_fechou') {
+        var _idNF = a.id;
+        var triggerNF = document.createElement('button');
+        triggerNF.type='button'; triggerNF.textContent='❌ Não fechou';
+        triggerNF.style.cssText='padding:8px 12px;font-size:0.78rem;font-weight:600;border:2px solid #94a3b8;background:#f8fafc;color:#64748b;border-radius:8px;cursor:pointer';
+        footer.appendChild(triggerNF);
+
+        var formNF = document.createElement('div');
+        formNF.style.cssText='display:none;padding:0 14px 12px';
+        var lblNF = document.createElement('div');
+        lblNF.style.cssText='font-size:0.75rem;font-weight:600;color:#64748b;margin-bottom:4px';
+        lblNF.textContent='Motivo — o que o cliente disse?';
+        var txtNF = document.createElement('textarea');
+        txtNF.placeholder='Ex: não tem verba, produto não serve, já tem fornecedor...';
+        txtNF.style.cssText='width:100%;font-size:0.78rem;border:1.5px solid #e2e8f0;border-radius:8px;padding:8px;resize:vertical;min-height:55px;box-sizing:border-box;margin-bottom:8px;font-family:inherit';
+        var rowNF = document.createElement('div'); rowNF.style.cssText='display:flex;gap:6px';
+        var confNF = document.createElement('button');
+        confNF.type='button'; confNF.textContent='✔ Confirmar';
+        confNF.style.cssText='flex:1;padding:8px;font-size:0.78rem;border:none;background:#64748b;color:#fff;border-radius:8px;cursor:pointer;font-weight:700';
+        var cancNF = document.createElement('button');
+        cancNF.type='button'; cancNF.textContent='Cancelar';
+        cancNF.style.cssText='padding:8px 12px;font-size:0.78rem;border:1px solid #e5e5e5;background:#f9fafb;color:#374151;border-radius:8px;cursor:pointer';
+        triggerNF.addEventListener('click', function(e){ e.stopPropagation(); formNF.style.display='block'; triggerNF.style.display='none'; triggerAj.style.display='none'; triggerRet.style.display='none'; formAj.style.display='none'; formRet.style.display='none'; txtNF.focus(); });
+        cancNF.addEventListener('click', function(e){ e.stopPropagation(); formNF.style.display='none'; triggerNF.style.display=''; triggerAj.style.display=''; triggerRet.style.display=''; });
+        confNF.addEventListener('click', function(e){
+          e.stopPropagation();
+          var aNF = aplicacoesLogo.find(function(x){ return x.id===_idNF; }); if (!aNF) return;
+          aNF.status = 'nao_fechou';
+          aNF.nao_fechou_motivo = txtNF.value.trim() || 'Sem motivo informado';
+          aNF.nao_fechou_em = new Date().toISOString();
+          aNF.log = aNF.log||[];
+          aNF.log.push({ usuario: currentUser?.nome||'Sistema', acao:'❌ Não fechou — '+aNF.nao_fechou_motivo, em: new Date().toISOString() });
+          salvarEstado(); renderAcompanharLogo(); renderKanbanLogo();
+          mostrarToast('Registrado como não fechou.');
+        });
+        rowNF.appendChild(confNF); rowNF.appendChild(cancNF);
+        formNF.appendChild(lblNF); formNF.appendChild(txtNF); formNF.appendChild(rowNF);
+        div.appendChild(formNF);
+        (function(fNF, tNF){ triggerNF._formNF = fNF; triggerNF._txtNF = tNF; })(formNF, txtNF);
+      }
+
+      // botão reativar (só para nao_fechou)
+      if (a.status === 'nao_fechou') {
+        var _idReativ = a.id;
+        var btnReativ = document.createElement('button');
+        btnReativ.type='button'; btnReativ.textContent='↩ Reativar';
+        btnReativ.style.cssText='padding:8px 12px;font-size:0.78rem;font-weight:600;border:2px solid #0891b2;background:#eff6ff;color:#1e40af;border-radius:8px;cursor:pointer';
+        btnReativ.addEventListener('click', function(e){
+          e.stopPropagation();
+          var aRe = aplicacoesLogo.find(function(x){ return x.id===_idReativ; }); if (!aRe) return;
+          aRe.status = 'pensando';
+          aRe.nao_fechou_motivo = ''; aRe.nao_fechou_em = '';
+          aRe.retorno_em = null; aRe.retorno_obs = '';
+          aRe.log = aRe.log||[];
+          aRe.log.push({ usuario: currentUser?.nome||'Sistema', acao:'↩ Reativado — cliente retomou interesse', em: new Date().toISOString() });
+          salvarEstado(); renderAcompanharLogo(); renderKanbanLogo();
+          mostrarToast('✅ Reativado! Card voltou para acompanhamento.');
+        });
+        footer.appendChild(btnReativ);
+      }
+
+      // botão agendar retorno
+      var _idRet = a.id;
+      var triggerRet = document.createElement('button');
+      triggerRet.type='button';
+      triggerRet.textContent = a.retorno_em ? '📅 Reagendar' : '📅 Agendar retorno';
+      triggerRet.style.cssText='padding:8px 12px;font-size:0.78rem;font-weight:600;border:2px solid #7c3aed;background:#f5f3ff;color:#5b21b6;border-radius:8px;cursor:pointer';
+      footer.appendChild(triggerRet);
 
       div.appendChild(footer);
 
@@ -11220,12 +11300,84 @@ Instagram: mariasilva"></textarea>
       var cancAj = document.createElement('button');
       cancAj.type='button'; cancAj.textContent='Cancelar';
       cancAj.style.cssText='padding:7px 14px;font-size:0.78rem;border:1px solid #e5e5e5;background:#f9fafb;color:#374151;border-radius:8px;cursor:pointer';
-      triggerAj.addEventListener('click', function(e){ e.stopPropagation(); formAj.style.display='block'; triggerAj.style.display='none'; txtAj.focus(); });
-      cancAj.addEventListener('click', function(e){ e.stopPropagation(); formAj.style.display='none'; triggerAj.style.display=''; txtAj.value=''; });
+      triggerAj.addEventListener('click', function(e){ e.stopPropagation(); formAj.style.display='block'; formRet.style.display='none'; triggerAj.style.display='none'; triggerRet.style.display='none'; txtAj.focus(); });
+      cancAj.addEventListener('click', function(e){ e.stopPropagation(); formAj.style.display='none'; triggerAj.style.display=''; triggerRet.style.display=''; txtAj.value=''; });
       confAj.addEventListener('click', function(e){ e.stopPropagation(); if(!txtAj.value.trim()){txtAj.style.border='1.5px solid #dc2626';txtAj.focus();mostrarToast('⚠️ Descreva o ajuste.');return;} marcarLogoReprovado(_idAj, txtAj.value); renderAcompanharLogo(); });
       rowConf.appendChild(confAj); rowConf.appendChild(cancAj);
       formAj.appendChild(txtAj); formAj.appendChild(rowConf);
       div.appendChild(formAj);
+
+      // form agendar retorno (expansível)
+      var formRet = document.createElement('div');
+      formRet.style.cssText='display:none;padding:0 14px 12px';
+
+      var lblObs = document.createElement('div');
+      lblObs.style.cssText='font-size:0.75rem;font-weight:600;color:#5b21b6;margin-bottom:4px';
+      lblObs.textContent='💬 O que o cliente disse?';
+      var txtObs = document.createElement('textarea');
+      txtObs.placeholder='Ex: vai fechar em 3 meses, aguardando verba...';
+      txtObs.style.cssText='width:100%;font-size:0.78rem;border:1.5px solid #c4b5fd;border-radius:8px;padding:8px;resize:vertical;min-height:55px;box-sizing:border-box;margin-bottom:8px;font-family:inherit';
+      if (a.retorno_obs) txtObs.value = a.retorno_obs;
+
+      var lblData = document.createElement('div');
+      lblData.style.cssText='font-size:0.75rem;font-weight:600;color:#5b21b6;margin-bottom:4px';
+      lblData.textContent='📅 Retornar em';
+      var inpData = document.createElement('input');
+      inpData.type='date';
+      // data mínima = amanhã
+      var amanha = new Date(); amanha.setDate(amanha.getDate()+1);
+      inpData.min = amanha.toISOString().slice(0,10);
+      if (a.retorno_em) inpData.value = a.retorno_em.slice(0,10);
+      inpData.style.cssText='width:100%;font-size:0.82rem;border:1.5px solid #c4b5fd;border-radius:8px;padding:8px;box-sizing:border-box;margin-bottom:8px;font-family:inherit;color:#374151';
+
+      var rowRet = document.createElement('div');
+      rowRet.style.cssText='display:flex;gap:6px';
+      var confRet = document.createElement('button');
+      confRet.type='button'; confRet.textContent='📅 Confirmar agendamento';
+      confRet.style.cssText='flex:1;padding:8px;font-size:0.78rem;border:none;background:#7c3aed;color:#fff;border-radius:8px;cursor:pointer;font-weight:700';
+      var cancRet = document.createElement('button');
+      cancRet.type='button'; cancRet.textContent='Cancelar';
+      cancRet.style.cssText='padding:8px 12px;font-size:0.78rem;border:1px solid #e5e5e5;background:#f9fafb;color:#374151;border-radius:8px;cursor:pointer';
+
+      triggerRet.addEventListener('click', function(e){ e.stopPropagation(); formRet.style.display='block'; formAj.style.display='none'; triggerRet.style.display='none'; triggerAj.style.display='none'; txtObs.focus(); });
+      cancRet.addEventListener('click', function(e){ e.stopPropagation(); formRet.style.display='none'; triggerRet.style.display=''; triggerAj.style.display=''; });
+      confRet.addEventListener('click', function(e){
+        e.stopPropagation();
+        if (!inpData.value) { inpData.style.border='1.5px solid #7c3aed'; inpData.focus(); mostrarToast('⚠️ Escolha uma data.'); return; }
+        var aR = aplicacoesLogo.find(function(x){ return x.id===_idRet; }); if (!aR) return;
+        aR.retorno_em = inpData.value + 'T09:00:00';
+        aR.retorno_obs = txtObs.value.trim();
+        aR.log = aR.log||[];
+        aR.log.push({ usuario: currentUser?.nome||'Sistema', acao:'📅 Retorno agendado para '+new Date(aR.retorno_em).toLocaleDateString('pt-BR')+(aR.retorno_obs?' — '+aR.retorno_obs:''), em: new Date().toISOString() });
+        salvarEstado(); renderAcompanharLogo();
+        mostrarToast('📅 Retorno agendado para '+new Date(aR.retorno_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}));
+      });
+
+      // botão cancelar agendamento (se já tem data)
+      if (a.retorno_em) {
+        var btnCancAg = document.createElement('button');
+        btnCancAg.type='button'; btnCancAg.textContent='✕ Cancelar agendamento';
+        btnCancAg.style.cssText='width:100%;margin-top:6px;padding:6px;font-size:0.72rem;border:1px solid #e5e5e5;background:none;color:#94a3b8;border-radius:7px;cursor:pointer';
+        btnCancAg.addEventListener('click', function(e){
+          e.stopPropagation();
+          var aR = aplicacoesLogo.find(function(x){ return x.id===_idRet; }); if (!aR) return;
+          aR.retorno_em = null; aR.retorno_obs = '';
+          aR.log = aR.log||[];
+          aR.log.push({ usuario: currentUser?.nome||'Sistema', acao:'📅 Agendamento cancelado', em: new Date().toISOString() });
+          salvarEstado(); renderAcompanharLogo();
+          mostrarToast('Agendamento removido.');
+        });
+        rowRet.appendChild(confRet); rowRet.appendChild(cancRet);
+        formRet.appendChild(lblObs); formRet.appendChild(txtObs);
+        formRet.appendChild(lblData); formRet.appendChild(inpData);
+        formRet.appendChild(rowRet); formRet.appendChild(btnCancAg);
+      } else {
+        rowRet.appendChild(confRet); rowRet.appendChild(cancRet);
+        formRet.appendChild(lblObs); formRet.appendChild(txtObs);
+        formRet.appendChild(lblData); formRet.appendChild(inpData);
+        formRet.appendChild(rowRet);
+      }
+      div.appendChild(formRet);
 
       return div;
     }
@@ -11256,6 +11408,7 @@ Instagram: mariasilva"></textarea>
     if (vencidos.length)  list.appendChild(secao('Contatar agora', '#dc2626', vencidos, 'vencido'));
     if (agendados.length) list.appendChild(secao('Agendados', '#b45309', agendados, 'agendado'));
     if (semResp.length)   list.appendChild(secao('Sem resposta', '#64748b', semResp, 'semresp'));
+    if (naoFech.length)   list.appendChild(secao('Não fecharam', '#94a3b8', naoFech, 'naofech'));
 
     // delegação para botões "Copiar telefone"
     list.querySelectorAll('button[data-copiar-tel]').forEach(function(btn) {
