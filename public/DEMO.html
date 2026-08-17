@@ -11143,7 +11143,7 @@ Instagram: mariasilva"></textarea>
         '<div style="font-size:0.8rem;font-weight:600;color:#0891b2">' + (a.cliente_nome||'—') + (a.cliente_codigo?' <span style="color:#94a3b8;font-weight:400">· '+a.cliente_codigo+'</span>':'') + '</div>' +
         '<div style="font-size:0.72rem;color:#64748b">' + refs + '</div>' +
         '<div style="margin-top:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
-          (waUrl ? '<a href="'+waUrl+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:0.75rem;font-weight:700;color:#059669;text-decoration:none;display:flex;align-items:center;gap:3px"><span style="font-size:1rem">📱</span>'+telFmt+'</a>' : '<span style="font-size:0.72rem;color:#94a3b8">Sem telefone</span>') +
+          (telLimpo ? '<span style="display:inline-flex;align-items:center;gap:4px"><span style="font-size:0.75rem;font-weight:700;color:#1e293b">📱 '+telFmt+'</span><button type=\"button\" onclick=\"event.stopPropagation();navigator.clipboard.writeText(''+telLimpo+'').then(function(){var b=this;}).catch(function(){});var _b=event.currentTarget;_b.textContent='✅';setTimeout(function(){_b.textContent='📋 Copiar';},1500)\" style=\"border:1px solid #e2e8f0;background:#f8fafc;color:#64748b;border-radius:5px;padding:1px 7px;font-size:0.68rem;cursor:pointer;font-family:inherit\">📋 Copiar</button></span>' : '<span style=\"font-size:0.72rem;color:#94a3b8\">Sem telefone</span>') +
           (tent>0 ? '<span style="font-size:0.68rem;color:#f59e0b;background:#fef3c7;border-radius:4px;padding:1px 5px">'+tent+'/4 tentativas</span>' : '') +
           (a.vendedora ? '<span style="font-size:0.68rem;color:#94a3b8">'+a.vendedora+'</span>' : '') +
         '</div>';
@@ -11270,19 +11270,63 @@ Instagram: mariasilva"></textarea>
     ];
     var novasTent = Math.min(tentAtual + 1, 4);
     var msg = msgs[tentAtual] || msgs[3];
-    a.tentativas_contato = novasTent;
-    a.log = a.log||[];
-    a.log.push({ usuario: currentUser?.nome||'Sistema', acao:'Tentativa '+novasTent+'/4 — WhatsApp enviado', em: new Date().toISOString() });
-    if (novasTent >= 4) {
-      a.status = 'sem_resposta';
-    }
-    salvarEstado();
-    renderKanbanLogo();
     var telLimpo = (tel||'').replace(/\D/g,'');
-    var url = telLimpo
-      ? 'https://wa.me/55' + telLimpo + '?text=' + encodeURIComponent(msg)
-      : 'https://wa.me/?text=' + encodeURIComponent(msg);
-    window.open(url, '_blank');
+    var telFmt = telLimpo.length===11 ? '('+telLimpo.slice(0,2)+') '+telLimpo.slice(2,7)+'-'+telLimpo.slice(7) : (tel||'—');
+
+    // Modal para copiar mensagem e confirmar envio manualmente
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+    var box = document.createElement('div');
+    box.style.cssText = 'background:#fff;border-radius:16px;padding:24px;max-width:440px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.18);display:flex;flex-direction:column;gap:14px';
+    box.innerHTML =
+      '<div style="font-weight:800;font-size:1rem;color:#1e293b">📋 Mensagem sugerida — tentativa '+novasTent+'/4</div>' +
+      '<div style="font-size:0.8rem;color:#64748b">Cliente: <strong>'+nomeCompleto+'</strong>'+(telFmt!=='—'?' · 📱 '+telFmt:'')+'</div>';
+
+    // Textarea com a mensagem
+    var ta = document.createElement('textarea');
+    ta.value = msg;
+    ta.readOnly = false;
+    ta.style.cssText = 'width:100%;min-height:100px;font-size:0.82rem;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px;resize:vertical;font-family:inherit;line-height:1.5;box-sizing:border-box;color:#374151;background:#f8fafc';
+    box.appendChild(ta);
+
+    // Botão copiar
+    var btnCopy = document.createElement('button');
+    btnCopy.type='button'; btnCopy.textContent='📋 Copiar mensagem';
+    btnCopy.style.cssText='padding:9px;font-size:0.82rem;font-weight:600;border:2px solid #0891b2;background:#eff6ff;color:#1e40af;border-radius:9px;cursor:pointer;width:100%';
+    btnCopy.addEventListener('click', function(){
+      navigator.clipboard.writeText(ta.value).then(function(){
+        btnCopy.textContent='✅ Copiado!'; btnCopy.style.background='#f0fdf4'; btnCopy.style.borderColor='#059669'; btnCopy.style.color='#065f46';
+        setTimeout(function(){ btnCopy.textContent='📋 Copiar mensagem'; btnCopy.style.background='#eff6ff'; btnCopy.style.borderColor='#0891b2'; btnCopy.style.color='#1e40af'; }, 2000);
+      }).catch(function(){ ta.select(); document.execCommand('copy'); });
+    });
+    box.appendChild(btnCopy);
+
+    // Botão confirmar envio
+    var btnConf = document.createElement('button');
+    btnConf.type='button'; btnConf.textContent='✅ Marquei como enviado';
+    btnConf.style.cssText='padding:11px;font-size:0.88rem;font-weight:800;border:none;background:#25d366;color:#fff;border-radius:10px;cursor:pointer;width:100%';
+    btnConf.addEventListener('click', function(){
+      a.tentativas_contato = novasTent;
+      a.log = a.log||[];
+      a.log.push({ usuario: currentUser?.nome||'Sistema', acao:'Tentativa '+novasTent+'/4 — mensagem enviada', em: new Date().toISOString() });
+      if (novasTent >= 4) a.status = 'sem_resposta';
+      salvarEstado(); renderKanbanLogo(); renderAcompanharLogo();
+      document.body.removeChild(overlay);
+      mostrarToast('📲 Tentativa '+novasTent+'/4 registrada.');
+    });
+    box.appendChild(btnConf);
+
+    // Botão cancelar
+    var btnCanc = document.createElement('button');
+    btnCanc.type='button'; btnCanc.textContent='Cancelar';
+    btnCanc.style.cssText='padding:8px;font-size:0.8rem;border:1px solid #e5e5e5;background:#f9fafb;color:#64748b;border-radius:9px;cursor:pointer;width:100%';
+    btnCanc.addEventListener('click', function(){ document.body.removeChild(overlay); });
+    box.appendChild(btnCanc);
+
+    overlay.appendChild(box);
+    overlay.addEventListener('click', function(e){ if(e.target===overlay) document.body.removeChild(overlay); });
+    document.body.appendChild(overlay);
+    setTimeout(function(){ ta.select(); }, 100);
   }
 
   function marcarLogoEnviado(id) {
