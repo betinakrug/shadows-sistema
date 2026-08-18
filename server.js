@@ -14,7 +14,7 @@ const ESTADO_LEGADO = path.join(DATA_DIR, 'estado.json');
 const PRODUTOS_FILE = path.join(DATA_DIR, 'produtos.json');
 const BACKUP_DIR    = path.join(DATA_DIR, 'backups');
 
-app.use(express.json({ limit: '5mb' })); // limite global seguro; /api/estado e /api/gerar-pdf têm limites próprios
+app.use(express.json({ limit: '20mb' })); // 20mb cobre o estado com imagens sem causar memory leak
 
 if (!fs.existsSync(DATA_DIR))    fs.mkdirSync(DATA_DIR,    { recursive: true });
 if (!fs.existsSync(BACKUP_DIR))  fs.mkdirSync(BACKUP_DIR,  { recursive: true });
