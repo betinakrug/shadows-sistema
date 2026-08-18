@@ -4312,10 +4312,10 @@ Instagram: mariasilva"></textarea>
 
   function salvarEstado() {
     const estado = montarEstadoAtual();
-    // Sempre salva localmente (imediato, leve)
+    // Sempre salva localmente (imediato, leve) — sem limite de tamanho, catch lida com QuotaExceeded
     try {
       const _json = JSON.stringify(estado);
-      if (_json.length < 3 * 1024 * 1024) localStorage.setItem(LS_KEY, _json);
+      localStorage.setItem(LS_KEY, _json);
     } catch(_) {}
     _savePendingState = estado;
     // Se já há um save em andamento, apenas atualiza o estado pendente — o save atual vai reenviar ao terminar

@@ -14,7 +14,11 @@ const ESTADO_LEGADO = path.join(DATA_DIR, 'estado.json');
 const PRODUTOS_FILE = path.join(DATA_DIR, 'produtos.json');
 const BACKUP_DIR    = path.join(DATA_DIR, 'backups');
 
-app.use(express.json({ limit: '20mb' })); // 20mb cobre o estado com imagens sem causar memory leak
+// Limite por rota: /api/estado aceita até 50mb (imagens inline); outras rotas 10mb
+app.use((req, res, next) => {
+  const lim = req.path === '/api/estado' ? '50mb' : '10mb';
+  express.json({ limit: lim })(req, res, next);
+});
 
 if (!fs.existsSync(DATA_DIR))    fs.mkdirSync(DATA_DIR,    { recursive: true });
 if (!fs.existsSync(BACKUP_DIR))  fs.mkdirSync(BACKUP_DIR,  { recursive: true });
@@ -257,7 +261,7 @@ app.get('/api/estado', (req, res) => {
   catch(err) { res.status(500).json({ erro: 'Nao foi possivel ler os dados.', detalhe: err.message }); }
 });
 
-app.post('/api/estado', express.json({ limit: '50mb' }), (req, res) => {
+app.post('/api/estado', (req, res) => {
   try {
     const incoming = req.body;
     if (!incoming || typeof incoming !== 'object') return res.status(400).json({ erro: 'Corpo invalido.' });
@@ -443,8 +447,10 @@ app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'DEMO.htm
 // ── Error handler ─────────────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
   if (err && (err.type === 'request.aborted' || err.message === 'request aborted')) return;
-  console.error('[Shadows] Erro:', err.message);
-  if (!res.headersSent) res.status(500).json({ erro: 'Erro interno.' });
+  // Passa o status real (ex: 413 Payload Too Large) em vez de sempre 500
+  const status = err.status || err.statusCode || 500;
+  console.error('[Shadows] Erro ' + status + ':', err.message);
+  if (!res.headersSent) res.status(status).json({ erro: err.message || 'Erro interno.' });
 });
 
 app.listen(PORT, '0.0.0.0', () => {
