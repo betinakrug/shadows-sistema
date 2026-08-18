@@ -2279,7 +2279,8 @@ Instagram: mariasilva"></textarea>
                 <div class="swatch-item" onclick="selecionarCorMala('Azul Royal', this)"><div class="swatch-circle" style="background:#1B4F9C"></div><span class="swatch-label">Azul Royal</span></div>
                 <div class="swatch-item" onclick="selecionarCorMala('Azul Bebê', this)"><div class="swatch-circle" style="background:#9FC9E0"></div><span class="swatch-label">Azul Bebê</span></div>
                 <div class="swatch-item" onclick="selecionarCorMala('Azul Marinho', this)"><div class="swatch-circle" style="background:#152238"></div><span class="swatch-label">Azul Marinho</span></div>
-                <div class="swatch-item" onclick="selecionarCorMala('Cinza', this)"><div class="swatch-circle" style="background:#9C9C9C"></div><span class="swatch-label">Cinza</span></div>
+                <div class="swatch-item" <div class="swatch-item" onclick="selecionarCorMala('Roxo', this)"><div class="swatch-circle" style="background:#7B2D8B"></div><span class="swatch-label">Roxo</span></div>
+                onclick="selecionarCorMala('Cinza', this)"><div class="swatch-circle" style="background:#9C9C9C"></div><span class="swatch-label">Cinza</span></div>
                 <div class="swatch-item" onclick="selecionarCorMala('Estampada', this)"><div class="swatch-circle" style="background:linear-gradient(135deg,#FF2E7A,#FF8A00,#FFD23F,#00C2A8,#6C5CE7);border:2px solid #ccc"></div><span class="swatch-label">Estampada</span></div>
               </div>
             </div>
@@ -2795,7 +2796,8 @@ Instagram: mariasilva"></textarea>
           <div class="mod-swatch-item" onclick="modSelCor('Azul Royal',this)"><div class="mod-swatch-circle" style="background:#1B4F9C"></div><span class="mod-swatch-label">Azul Royal</span></div>
           <div class="mod-swatch-item" onclick="modSelCor('Azul Bebê',this)"><div class="mod-swatch-circle" style="background:#9FC9E0"></div><span class="mod-swatch-label">Azul Bebê</span></div>
           <div class="mod-swatch-item" onclick="modSelCor('Azul Marinho',this)"><div class="mod-swatch-circle" style="background:#152238"></div><span class="mod-swatch-label">Azul Marinho</span></div>
-          <div class="mod-swatch-item" onclick="modSelCor('Cinza',this)"><div class="mod-swatch-circle" style="background:#9C9C9C"></div><span class="mod-swatch-label">Cinza</span></div>
+          <div class="mod-swatch-item" <div class="mod-swatch-item" onclick="modSelCor('Roxo',this)"><div class="mod-swatch-circle" style="background:#7B2D8B"></div><span class="mod-swatch-label">Roxo</span></div>
+          onclick="modSelCor('Cinza',this)"><div class="mod-swatch-circle" style="background:#9C9C9C"></div><span class="mod-swatch-label">Cinza</span></div>
           <div class="mod-swatch-item" onclick="modSelCor('Estampada',this)"><div class="mod-swatch-circle" style="background:linear-gradient(135deg,#FF2E7A,#FF8A00,#FFD23F,#00C2A8,#6C5CE7)"></div><span class="mod-swatch-label">Estampada</span></div>
         </div>
       </div>
@@ -3033,7 +3035,7 @@ Instagram: mariasilva"></textarea>
     'Branco':'#FFFFFF', 'Amarelo Ouro':'#E6A817', 'Amarelo Canário':'#FFD400', 'Laranja':'#F26522',
     'Rosa Pink':'#EC008C', 'Vermelho':'#D7000F', 'Vinho':'#5C0A1E', 'Marrom Café':'#4A2E22',
     'Estampada':'__gradient__', 'Preto':'#1A1A1A', 'Verde Bandeira':'#00873E', 'Verde Musgo':'#4B5320', 'Verde Folha':'#2E8B30',
-    'Azul Royal':'#1B4F9C', 'Azul Bebê':'#9FC9E0', 'Azul Marinho':'#152238', 'Cinza':'#9C9C9C',
+    'Azul Royal':'#1B4F9C', 'Azul Bebê':'#9FC9E0', 'Azul Marinho':'#152238', 'Roxo':'#7B2D8B', 'Cinza':'#9C9C9C',
   };
   function corMalaDot(nome) {
     if (!nome) return '';
@@ -6947,7 +6949,7 @@ Instagram: mariasilva"></textarea>
   }
 
   function gerarSelectCoresFrete(selId, dotId, valorAtual) {
-    const cores = ['','Preto','Branco','Cinza','Azul Marinho','Azul Royal','Azul Bebê','Vermelho','Vinho','Rosa Pink','Laranja','Amarelo Ouro','Amarelo Canário','Verde Bandeira','Verde Musgo','Verde Folha','Marrom Café','Estampada'];
+    const cores = ['','Preto','Branco','Cinza','Roxo','Azul Marinho','Azul Royal','Azul Bebê','Vermelho','Vinho','Rosa Pink','Laranja','Amarelo Ouro','Amarelo Canário','Verde Bandeira','Verde Musgo','Verde Folha','Marrom Café','Estampada'];
     const opts = cores.map(c => '<option value="'+c+'"'+(c===valorAtual?' selected':'')+'>'+( c||'Sem cor específica')+'</option>').join('');
     return '<div style="display:flex;align-items:center;gap:8px;margin-top:8px">'
       + '<span style="font-size:0.78rem;color:var(--muted);white-space:nowrap">Cor da mala:</span>'
