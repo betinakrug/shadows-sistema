@@ -251,6 +251,71 @@ function recuperarProdutosSeVazio() {
   } catch(err) { console.error('Erro ao recuperar produtos:', err.message); }
 }
 recuperarProdutosSeVazio();
+// ── Migração: base64 → arquivos (roda 1x no startup, encolhe o banco de ~500MB para ~5MB) ───
+function migrarBase64ParaArquivos() {
+  let _c = 0;
+  function salvarB64(dataUrl, nome) {
+    try {
+      const m = dataUrl.match(/^data:([^;]+);base64,([\s\S]+)$/);
+      if (!m) return null;
+      const ext = m[1].split('/')[1].split('+')[0].replace(/[^a-z0-9]/g,'').slice(0,10) || 'bin';
+      const base = (nome||'img').replace(/\.[^.]+$/,'').replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,25);
+      const fname = base + '_' + Date.now() + '_' + (++_c) + '.' + ext;
+      fs.writeFileSync(path.join(UPLOADS_DIR, fname), Buffer.from(m[2].trim(),'base64'));
+      return '/files/' + fname;
+    } catch(e) { return null; }
+  }
+
+  let total = 0;
+
+  // Aplicacoes de logo (arquivos_logo + mockups)
+  const logos = db.prepare('SELECT id, dados FROM aplicacoes_logo').all();
+  for (const row of logos) {
+    try {
+      const item = JSON.parse(row.dados);
+      let mudou = false;
+      for (const arq of (item.arquivos_logo||[])) {
+        if (arq && arq.dataUrl && arq.dataUrl.startsWith('data:')) {
+          const url = salvarB64(arq.dataUrl, arq.nome||'logo');
+          if (url) { arq.dataUrl = url; if (arq.previewUrl && arq.previewUrl.startsWith('data:')) arq.previewUrl = url; mudou=true; total++; }
+        }
+      }
+      for (const mk of (item.mockups||[])) {
+        if (mk && mk.dataUrl && mk.dataUrl.startsWith('data:')) {
+          const url = salvarB64(mk.dataUrl, mk.nome||'mockup');
+          if (url) { mk.dataUrl = url; mudou=true; total++; }
+        }
+      }
+      if (mudou) db.prepare('UPDATE aplicacoes_logo SET dados=? WHERE id=?').run(JSON.stringify(item), row.id);
+    } catch(e) { console.error('[Migr] logo id='+row.id, e.message); }
+  }
+
+  // Modelagens (layoutDesign + anexos)
+  const mods = db.prepare('SELECT id, dados FROM modelagens').all();
+  for (const row of mods) {
+    try {
+      const item = JSON.parse(row.dados);
+      let mudou = false;
+      for (const campo of ['layoutDesign','anexos']) {
+        for (const arq of (item[campo]||[])) {
+          if (arq && arq.dataUrl && arq.dataUrl.startsWith('data:')) {
+            const url = salvarB64(arq.dataUrl, arq.nome||campo);
+            if (url) { arq.dataUrl = url; mudou=true; total++; }
+          }
+        }
+      }
+      if (mudou) db.prepare('UPDATE modelagens SET dados=? WHERE id=?').run(JSON.stringify(item), row.id);
+    } catch(e) { console.error('[Migr] modelagem id='+row.id, e.message); }
+  }
+
+  if (total > 0) {
+    console.log('[Shadows] Migradas ' + total + ' imagens base64 -> /files/. Compactando banco...');
+    try { db.prepare('VACUUM').run(); console.log('[Shadows] VACUUM OK — banco compactado.'); } catch(e) {}
+  } else {
+    console.log('[Shadows] Nenhuma imagem base64 pendente de migração.');
+  }
+}
+migrarBase64ParaArquivos();
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ROTAS
