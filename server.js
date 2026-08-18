@@ -268,7 +268,7 @@ function migrarBase64ParaArquivos() {
 
   let total = 0;
 
-  // Aplicacoes de logo (arquivos_logo + mockups)
+  // Aplicacoes de logo (arquivos_logo + mockups + ref_cliente_img + estampa_ref)
   const logos = db.prepare('SELECT id, dados FROM aplicacoes_logo').all();
   for (const row of logos) {
     try {
@@ -285,6 +285,14 @@ function migrarBase64ParaArquivos() {
           const url = salvarB64(mk.dataUrl, mk.nome||'mockup');
           if (url) { mk.dataUrl = url; mudou=true; total++; }
         }
+      }
+      if (item.ref_cliente_img && item.ref_cliente_img.startsWith('data:')) {
+        const url = salvarB64(item.ref_cliente_img, 'ref-cliente');
+        if (url) { item.ref_cliente_img = url; mudou=true; total++; }
+      }
+      if (item.estampa_ref && item.estampa_ref.dataUrl && item.estampa_ref.dataUrl.startsWith('data:')) {
+        const url = salvarB64(item.estampa_ref.dataUrl, item.estampa_ref.nome||'estampa');
+        if (url) { item.estampa_ref.dataUrl = url; mudou=true; total++; }
       }
       if (mudou) db.prepare('UPDATE aplicacoes_logo SET dados=? WHERE id=?').run(JSON.stringify(item), row.id);
     } catch(e) { console.error('[Migr] logo id='+row.id, e.message); }
@@ -317,6 +325,51 @@ function migrarBase64ParaArquivos() {
 }
 migrarBase64ParaArquivos();
 
+// ── Sanitização: strip base64 de qualquer campo antes de salvar no banco ──────
+// Garante que mesmo que um browser antigo envie imagens inline, elas viram arquivo.
+function sanitizarEstado(incoming) {
+  let _sc = 0;
+  function b64ParaArquivo(dataUrl, nome) {
+    if (!dataUrl || !dataUrl.startsWith('data:')) return dataUrl;
+    try {
+      const m = dataUrl.match(/^data:([^;]+);base64,([\s\S]+)$/);
+      if (!m) return '';
+      const ext  = m[1].split('/')[1].split('+')[0].replace(/[^a-z0-9]/g,'').slice(0,10) || 'bin';
+      const base = (nome||'img').replace(/\.[^.]+$/,'').replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,25);
+      const fname = base + '_san_' + Date.now() + '_' + (++_sc) + '.' + ext;
+      fs.writeFileSync(path.join(UPLOADS_DIR, fname), Buffer.from(m[2].trim(), 'base64'));
+      return '/files/' + fname;
+    } catch(e) { console.error('[Sanitize] erro ao salvar arquivo:', e.message); return ''; }
+  }
+
+  for (const a of (incoming.aplicacoesLogo || [])) {
+    if (a.ref_cliente_img && a.ref_cliente_img.startsWith('data:'))
+      a.ref_cliente_img = b64ParaArquivo(a.ref_cliente_img, 'ref-cliente');
+    if (a.estampa_ref && a.estampa_ref.dataUrl && a.estampa_ref.dataUrl.startsWith('data:'))
+      a.estampa_ref.dataUrl = b64ParaArquivo(a.estampa_ref.dataUrl, a.estampa_ref.nome||'estampa');
+    for (const arq of (a.arquivos_logo||[])) {
+      if (arq && arq.dataUrl && arq.dataUrl.startsWith('data:')) {
+        arq.dataUrl = b64ParaArquivo(arq.dataUrl, arq.nome||'logo');
+        if (arq.previewUrl && arq.previewUrl.startsWith('data:')) arq.previewUrl = arq.dataUrl;
+      }
+    }
+    for (const mk of (a.mockups||[])) {
+      if (mk && mk.dataUrl && mk.dataUrl.startsWith('data:'))
+        mk.dataUrl = b64ParaArquivo(mk.dataUrl, mk.nome||'mockup');
+    }
+  }
+  for (const m of (incoming.modelagens || [])) {
+    for (const campo of ['layoutDesign','anexos']) {
+      for (const arq of (m[campo]||[])) {
+        if (arq && arq.dataUrl && arq.dataUrl.startsWith('data:'))
+          arq.dataUrl = b64ParaArquivo(arq.dataUrl, arq.nome||campo);
+      }
+    }
+  }
+  if (_sc > 0) console.log('[Shadows] sanitizarEstado: convertidas ' + _sc + ' imagens base64 -> /files/ (POST em tempo real)');
+  return incoming;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // ROTAS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -330,6 +383,7 @@ app.post('/api/estado', (req, res) => {
   try {
     const incoming = req.body;
     if (!incoming || typeof incoming !== 'object') return res.status(400).json({ erro: 'Corpo invalido.' });
+    sanitizarEstado(incoming); // converte base64 → /files/ antes de salvar no banco
     salvarTransacao(incoming);
     backupDiario();
     res.json({ ok: true, atualizado_em: new Date().toISOString() });
