@@ -4348,7 +4348,21 @@ Instagram: mariasilva"></textarea>
         _atualizarIndicadorSave();
         if (!resp.ok) {
           console.warn('[Shadows] salvarEstado: servidor retornou', resp.status);
-          mostrarToast?.('⚠️ Erro ao salvar no servidor (' + resp.status + ') — tentando novamente em breve.');
+          if (resp.status === 413) {
+            // Estado grande demais — strip base64 e tenta de novo sem mostrar erro
+            console.warn('[Shadows] 413: reenviando sem base64...');
+            const stripped = JSON.parse(JSON.stringify(estado));
+            (stripped.aplicacoesLogo||[]).forEach(a => {
+              if (a.ref_cliente_img && a.ref_cliente_img.startsWith('data:')) a.ref_cliente_img = '';
+              if (a.estampa_ref && a.estampa_ref.dataUrl && a.estampa_ref.dataUrl.startsWith('data:')) a.estampa_ref.dataUrl = '';
+              (a.arquivos_logo||[]).forEach(arq => { if (arq.dataUrl && arq.dataUrl.startsWith('data:')) { arq.dataUrl=''; arq.previewUrl=''; } });
+              (a.mockups||[]).forEach(mk => { if (mk.dataUrl && mk.dataUrl.startsWith('data:')) mk.dataUrl=''; });
+            });
+            (stripped.modelagens||[]).forEach(m => { ['layoutDesign','anexos'].forEach(c => { (m[c]||[]).forEach(arq => { if (arq.dataUrl && arq.dataUrl.startsWith('data:')) arq.dataUrl=''; }); }); });
+            setTimeout(() => _enviarEstadoAoServidor(stripped), 200);
+          } else {
+            mostrarToast?.('⚠️ Erro ao salvar no servidor (' + resp.status + ') — tentando novamente em breve.');
+          }
         } else {
           _ultimoSaveEm = Date.now();
         }
